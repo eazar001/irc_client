@@ -198,13 +198,14 @@ reconnect :-
 %  to the irc server, close the socket stream pair, and attempt to reconnect.
 
 disconnect :-
+  thread_self(Me),
+  atom_concat(Me, '_ping_checker', Ping),
   get_irc_stream(Stream),
   send_msg(quit),
   info_cleanup,
   timer(T),
   message_queue_destroy(T),
-  thread_join(ping_checker, _),
-  thread_join(sync_worker, _),
+  thread_join(Ping, _),
   close(Stream).
 
 
