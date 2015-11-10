@@ -5,12 +5,12 @@
       ,disconnect/0
       ,known/1
       ,timer/1
-      ,get_irc_server/1
+      ,get_irc_server/2
       ,get_irc_stream/1
       ,get_irc_write_stream/1
       ,get_tcp_socket/1
       ,connection/6
-      ,min_msg_len/1 ]).
+      ,min_msg_len/2 ]).
 
 
 :- use_module(parser).
@@ -20,18 +20,21 @@
 :- use_module(library(func)).
 
 :- reexport(dispatch,
-	    [ send_msg/1
-	     ,send_msg/2
-	     ,send_msg/3 ]).
+     [ send_msg/1
+      ,send_msg/2
+      ,send_msg/3 ]).
+
 
 :- thread_local known/1.
-:- thread_local get_irc_server/1.
 :- thread_local get_irc_stream/1.
 :- thread_local get_irc_write_stream/1.
 :- thread_local get_tcp_socket/1.
 :- thread_local connection/6.
-:- thread_local min_msg_len/1.
+:- thread_local c_specs/5.
 :- thread_local timer/1.
+
+:- dynamic get_irc_server/2.
+:- dynamic min_msg_len/2.
 
 
 %--------------------------------------------------------------------------------%
@@ -46,6 +49,7 @@
 %  will be asserted at the top level for access from anywhere in the program.
 
 connect(Host, Port, Pass, Nick, Chans) :-
+  asserta(c_specs(Host,Port,Pass,Nick,Chans)),
   setup_call_cleanup(
     (  init_structs(Pass, Nick, Chans),
        tcp_socket(Socket),
@@ -127,16 +131,17 @@ read_server(Reply, Stream) :-
 
 
 read_server_handle(Reply) :-
+  thread_self(Me),
   G = maplist(predicate_property(user:P),
         [thread_local, imported_from(irc_client)]),
   findall(P, call(G), Ps),
   maplist(ignore, Ps),
   parse_line(Reply, Msg),
-  thread_create(run_det(process_server(Msg, Ps)), _Id, [detached(true)]),
+  thread_create(run_det(process_server(Me, Msg, Ps)), _Id, [detached(true)]),
   format('~s~n', [Reply]).
 
 
-%% process_server(+Msg:compound) is nondet.
+%% process_server(+Me, +Msg:compound, +List) is nondet.
 %
 %  All processing of server message will be handled here. Pings will be handled by
 %  responding with a pong to keep the connection alive. If the message is "001"
@@ -146,7 +151,7 @@ read_server_handle(Reply) :-
 %  serialized with respect to process_msg/1 so as to avoid race conditions.
 %  Anything else will be processed as an incoming message.
 
-process_server(Msg, List) :-
+process_server(Me, Msg, List) :-
   maplist(asserta, List),
   timer(T),
   thread_send_message(T, true),
@@ -156,8 +161,10 @@ process_server(Msg, List) :-
      send_msg(pong, Origin)
   ;  % Get irc server and assert info
      Msg = msg(Server, "001", _, _),
-     retractall(get_irc_server(_)),
-     asserta(get_irc_server(Server)),
+     (  get_irc_server(Me, Server)
+     -> true
+     ;  asserta(get_irc_server(Me, Server))
+     ),
      asserta(known(irc_server)),
      % Request own user info
      connection(Nick,_,_,_,_,_),
@@ -169,7 +176,7 @@ process_server(Msg, List) :-
      Params = [_Asker, _Chan, H, Host, _, Nick| _],
      % Calculate the minimum length for a private message and assert info
      format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-     asserta(min_msg_len(string_length $ Template))
+     asserta(min_msg_len(Me, string_length $ Template))
   ).
 
 
@@ -182,10 +189,11 @@ process_server(Msg, List) :-
 %
 %  Disconnect from the server, run cleanup routine, and attempt to reconnect.
 reconnect :-
+  c_specs(Host, Port, Pass, Nick, Chans),
   disconnect,
   repeat,
     writeln("Connection lost, attempting to reconnect ..."),
-    (  catch(connect, _E, fail)
+    (  catch(connect(Host, Port, Pass, Nick, Chans), _E, fail)
     -> !
     ;  sleep(30),
        fail
@@ -202,17 +210,18 @@ disconnect :-
   atom_concat(Me, '_ping_checker', Ping),
   get_irc_stream(Stream),
   send_msg(quit),
-  info_cleanup,
   timer(T),
   message_queue_destroy(T),
   thread_join(Ping, _),
-  close(Stream).
+  close(Stream),
+  info_cleanup.
 
 
 %% info_cleanup is det.
 %
 %  Retract all obsolete facts from info module.
 info_cleanup :-
+  thread_self(Me),
   (  get_tcp_socket(Socket)
   -> ignore(catch(tcp_close_socket(Socket), _E, fail))
   ;  true
@@ -221,8 +230,8 @@ info_cleanup :-
     [ get_irc_stream(_)
      ,get_tcp_socket(_)
      ,connection(_,_,_,_,_,_)
-     ,min_msg_len(_)
-     ,get_irc_server(_)
+     ,min_msg_len(Me,_)
+     ,get_irc_server(Me,_)
      ,get_irc_write_stream(_)
      ,known(_) ]).
 
@@ -248,11 +257,11 @@ init_timer(Id) :-
 
 %% check_pings(+Id:atom) is failure.
 %
-%  If Limit seconds has passed, then signal the connection threat to abort. If a
+%  If Limit seconds has passed, then signal the connection thread to abort. If a
 %  ping has been detected and the corresponding message is sent before the time
-%  limit expires, then the goal will succeed and so will the rest of the predicate.
-%  The thread will then return to its queue, reset its timer, and wait for another
-%  ping signal.
+%  limit expires, then the goal will succeed and so will the rest of the
+%  predicate. The thread will then return to its queue, reset its timer, and wait
+%  for another ping signal.
 
 check_pings(Id) :-
   thread_self(Self),
