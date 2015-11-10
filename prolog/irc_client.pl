@@ -2,17 +2,10 @@
 
 :- module(irc_client,
      [ connect/5
-      ,disconnect/0
-      ,known/1
-      ,timer/1
-      ,get_irc_server/2
-      ,get_irc_stream/1
-      ,get_irc_write_stream/1
-      ,get_tcp_socket/1
-      ,connection/6
-      ,min_msg_len/2 ]).
+      ,disconnect/0 ]).
 
 
+:- use_module(info).
 :- use_module(parser).
 :- use_module(dispatch).
 :- use_module(utilities).
@@ -23,18 +16,6 @@
      [ send_msg/1
       ,send_msg/2
       ,send_msg/3 ]).
-
-
-:- thread_local known/1.
-:- thread_local get_irc_stream/1.
-:- thread_local get_irc_write_stream/1.
-:- thread_local get_tcp_socket/1.
-:- thread_local connection/6.
-:- thread_local c_specs/5.
-:- thread_local timer/1.
-
-:- dynamic get_irc_server/2.
-:- dynamic min_msg_len/2.
 
 
 %--------------------------------------------------------------------------------%
@@ -49,16 +30,16 @@
 %  will be asserted at the top level for access from anywhere in the program.
 
 connect(Host, Port, Pass, Nick, Chans) :-
-  asserta(c_specs(Host,Port,Pass,Nick,Chans)),
+  asserta(info:c_specs(Host,Port,Pass,Nick,Chans)),
   setup_call_cleanup(
     (  init_structs(Pass, Nick, Chans),
        tcp_socket(Socket),
        tcp_connect(Socket, Host:Port, Stream),
        stream_pair(Stream, _Read, Write),
-       asserta(get_irc_write_stream(Write)),
+       asserta(info:get_irc_write_stream(Write)),
        set_stream(Write, encoding(utf8)),
-       asserta(get_tcp_socket(Socket)),
-       asserta(get_irc_stream(Stream)),
+       asserta(info:get_tcp_socket(Socket)),
+       asserta(info:get_irc_stream(Stream)),
        register_and_join
     ),
     read_server_loop(_Reply),
@@ -87,7 +68,7 @@ init_structs(P_, N_, Chans_) :-
   maplist(atom_string, [N_, P_, host, server, name], Strs),
   Strs = [N, P, Hn, Sn, Rn],
   Connection =.. [connection, N, P, Chans, Hn, Sn, Rn],
-  asserta(Connection).
+  asserta(info:Connection).
 
 
 %--------------------------------------------------------------------------------%
@@ -104,7 +85,7 @@ init_structs(P_, N_, Chans_) :-
 read_server_loop(Reply) :-
   get_irc_stream(Stream),
   init_timer(_TQ),
-  asserta(known(tq)),
+  asserta(info:known(tq)),
   repeat,
     read_server(Reply, Stream), !.
 
@@ -132,8 +113,8 @@ read_server(Reply, Stream) :-
 
 read_server_handle(Reply) :-
   thread_self(Me),
-  G = maplist(predicate_property(user:P),
-        [thread_local, imported_from(irc_client)]),
+  G = maplist(predicate_property(P),
+        [thread_local, imported_from(info)]),
   findall(P, call(G), Ps),
   maplist(ignore, Ps),
   parse_line(Reply, Msg),
@@ -163,9 +144,9 @@ process_server(Me, Msg, List) :-
      Msg = msg(Server, "001", _, _),
      (  get_irc_server(Me, Server)
      -> true
-     ;  asserta(get_irc_server(Me, Server))
+     ;  asserta(info:get_irc_server(Me, Server))
      ),
-     asserta(known(irc_server)),
+     asserta(info:known(irc_server)),
      % Request own user info
      connection(Nick,_,_,_,_,_),
      send_msg(who, atom_string $ Nick)
@@ -176,7 +157,7 @@ process_server(Me, Msg, List) :-
      Params = [_Asker, _Chan, H, Host, _, Nick| _],
      % Calculate the minimum length for a private message and assert info
      format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-     asserta(min_msg_len(Me, string_length $ Template))
+     asserta(info:min_msg_len(Me, string_length $ Template))
   ).
 
 
@@ -250,7 +231,7 @@ init_timer(Id) :-
   thread_self(Self),
   atom_concat(Self, '_tq', Timer),
   atom_concat(Self, '_ping_checker', Checker),
-  asserta(timer(Timer)),
+  asserta(info:timer(Timer)),
   message_queue_create(Id, [alias(Timer)]),
   thread_create(check_pings(Id), _, [alias(Checker)]).
 

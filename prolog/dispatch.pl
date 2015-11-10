@@ -12,7 +12,7 @@
       ,send_msg/3 ]).
 
 
-:- use_module(irc_client).
+:- use_module(info).
 :- use_module(operator).
 
 

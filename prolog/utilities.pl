@@ -11,7 +11,7 @@
       ,priv_msg_paragraph/3 ]).
 
 
-:- use_module(irc_client).
+:- use_module(info).
 :- use_module(library(func)).
 :- use_module(library(lambda)).
 :- use_module(library(dcg/basics)).
