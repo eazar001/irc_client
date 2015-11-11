@@ -1,8 +1,9 @@
 
 
 :- module(irc_client,
-     [ connect/5
-      ,disconnect/0 ]).
+    [ assert_handlers/1
+     ,connect/5
+     ,disconnect/0 ]).
 
 
 :- use_module(info).
@@ -11,11 +12,15 @@
 :- use_module(utilities).
 :- use_module(library(socket)).
 :- use_module(library(func)).
+:- use_module(library(list_util)).
 
 :- reexport(dispatch,
      [ send_msg/2
       ,send_msg/3
       ,send_msg/4 ]).
+
+
+:- dynamic handle_server/1.
 
 
 %--------------------------------------------------------------------------------%
@@ -112,11 +117,11 @@ read_server(Reply, Stream) :-
 read_server_handle(Reply) :-
   thread_self(Me),
   parse_line(Reply, Msg),
-  thread_create(run_det(process_server(Me, Msg)), _Id, [detached(true)]),
+  thread_create(run_det(process_server(Me, Msg)), _Id, [detached(true)]).%,
   format('~s~n', [Reply]).
 
 
-%% process_server(+Me, +Msg:compound, +List) is nondet.
+%% process_server(+Me, +Msg:compound, +Goals) is nondet.
 %
 %  All processing of server message will be handled here. Pings will be handled by
 %  responding with a pong to keep the connection alive. If the message is "001"
@@ -149,7 +154,29 @@ process_server(Me, Msg) :-
      % Calculate the minimum length for a private message and assert info
      format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
      asserta(info:min_msg_len(Me, string_length $ Template))
+  ;  handle_server(Goals),
+     Goals \= [],
+     maplist(process_msg(Msg), Goals)
   ).
+
+
+%% assert_handlers(+Handlers) is det.
+%
+%  Assert handlers at the toplevel, where Handlers is a potentially empty list
+%  of goals to be called as irc messages come in. This is meant to be used as a
+%  directive in the user's program.
+
+assert_handlers(Handlers) :-
+  (  \+ handle_server(_)
+  -> retractall(handle_server(_))
+  ;  true
+  ),
+  asserta(handle_server(Handlers)).
+
+
+:- meta_predicate process_msg(+, 0).
+process_msg(Msg, Goal) :-
+  call(Goal, Msg).
 
 
 %--------------------------------------------------------------------------------%
