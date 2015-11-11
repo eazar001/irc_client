@@ -25,9 +25,8 @@
 
 %% connect is nondet.
 %
-%  Open socket on host, port, nick, user, hostname, and servername that will all
-%  be specified in the bot_config module. The socket stream that is established
-%  will be asserted at the top level for access from anywhere in the program.
+%  Open socket on host, port, nick, user, with the specified password and channels
+%  to be joined.
 
 connect(Host, Port, Pass, Nick, Chans) :-
   asserta(info:c_specs(Host,Port,Pass,Nick,Chans)),
@@ -57,14 +56,10 @@ register_and_join :-
 %% init_structs is det.
 %
 %  Assert the 'connection' structure at the top level so that access to important
-%  user information is available at the top level throughout the program. All of
-%  this information should be specified in the bot_config module.
+%  user information is available at the top level throughout the program.
 
 init_structs(P_, N_, Chans_) :-
   maplist(atom_string, Chans_, Chans),
-  %bot_hostname(Hn_),
-  %bot_servername(Sn_),
-  %bot_realname(Rn_),
   maplist(atom_string, [N_, P_, host, server, name], Strs),
   Strs = [N, P, Hn, Sn, Rn],
   Connection =.. [connection, N, P, Chans, Hn, Sn, Rn],
@@ -110,11 +105,9 @@ read_server(Reply, Stream) :-
 %  Concurrently process server lines via loaded extensions and output the server
 %  line to stdout for debugging.
 
-
 read_server_handle(Reply) :-
   thread_self(Me),
-  G = maplist(predicate_property(P),
-        [thread_local, imported_from(info)]),
+  G = maplist(predicate_property(P), [thread_local, imported_from(info)]),
   findall(P, call(G), Ps),
   maplist(ignore, Ps),
   parse_line(Reply, Msg),
@@ -225,7 +218,7 @@ info_cleanup :-
 %% init_timer(-Id:atom) is semidet.
 %
 %  Initialize a message queue that stores one thread which acts as a timer that
-%  checks connectivity of the bot when established interval has passed.
+%  checks connectivity of the client when established interval has passed.
 
 init_timer(Id) :-
   thread_self(Self),
