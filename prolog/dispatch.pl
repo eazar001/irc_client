@@ -29,8 +29,9 @@
 %  'unknown'.
 
 return_server(Server) :-
-  (  known(irc_server)
-  -> get_irc_server(Server)
+  thread_self(Me),
+  (  known(Me,irc_server)
+  -> get_irc_server(Me, Server)
   ;  Server = unknown
   ).
 
@@ -49,19 +50,21 @@ cmd_params(Type, N) :-
 %  Send a message of Type.
 send_msg(Type) :-
   cmd(Type, Msg),
-  get_irc_stream(Stream),
+  thread_self(Me),
+  get_irc_stream(Me, Stream),
   cmd_params(Type, 0), !, % green, no further matches
   write(Stream, Msg),
   flush_output(Stream),
-  timer(T),
+  timer(Me, T),
   thread_send_message(T, true).
 
 % This clause will deal with deal with message types that are possibly
 % timer-independent
 send_msg(Type) :-
   cmd(Type, Msg),
-  get_irc_stream(Stream),
-  connection(Nick, Pass, Chans, HostName, ServerName, RealName),
+  thread_self(Me),
+  get_irc_stream(Me, Stream),
+  connection(Me, Nick, Pass, Chans, HostName, ServerName, RealName),
   (  Type = pass,
      format(Stream, Msg, [Pass])
   ;  Type = user,
@@ -72,8 +75,8 @@ send_msg(Type) :-
      maplist(format(Stream, Msg), Chans)
   ),
   flush_output(Stream),
-  (  known(tq)
-  -> timer(T),
+  (  known(Me, tq)
+  -> timer(Me, T),
      thread_send_message(T, true)
   ;  true
   ).
@@ -90,10 +93,11 @@ send_msg(Type, Param) :-
      format(Debug, [Param])
   ;  true
   ), !, % green, no further matches
-  get_irc_stream(Stream),
+  thread_self(Me),
+  get_irc_stream(Me, Stream),
   format(Stream, Msg, [Param]),
   flush_output(Stream),
-  timer(T),
+  timer(Me, T),
   thread_send_message(T, true).
 
 
@@ -104,23 +108,25 @@ send_msg(Type, Str, Target) :-
   cmd(Type, Msg),
   cmd_params(Type, 2),
   \+member(Type, [kick, invite]), !, % green, no further matches
-  get_irc_stream(Stream),
+  thread_self(Me),
+  get_irc_stream(Me, Stream),
   format(Stream, Msg, [Target, Str]),
   flush_output(Stream),
-  timer(T),
+  timer(Me, T),
   thread_send_message(T, true).
 
 % Send a message of Type with respect to Chan, to the Target.
 send_msg(Type, Chan, Target) :-
   cmd(Type, Msg),
-  get_irc_stream(Stream),
+  thread_self(Me),
+  get_irc_stream(Me, Stream),
   (  Type = kick,
      format(Stream, Msg, [Chan, Target])
   ;  Type = invite,
      format(Stream, Msg, [Target, Chan])
   ), !,
   flush_output(Stream),
-  timer(T),
+  timer(Me, T),
   thread_send_message(T, true).
 
 

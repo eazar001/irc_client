@@ -29,16 +29,17 @@
 %  to be joined.
 
 connect(Host, Port, Pass, Nick, Chans) :-
-  asserta(info:c_specs(Host,Port,Pass,Nick,Chans)),
+  thread_self(Me),
+  asserta(info:c_specs(Me,Host,Port,Pass,Nick,Chans)),
   setup_call_cleanup(
     (  init_structs(Pass, Nick, Chans),
        tcp_socket(Socket),
        tcp_connect(Socket, Host:Port, Stream),
        stream_pair(Stream, _Read, Write),
-       asserta(info:get_irc_write_stream(Write)),
+       asserta(info:get_irc_write_stream(Me, Write)),
        set_stream(Write, encoding(utf8)),
-       asserta(info:get_tcp_socket(Socket)),
-       asserta(info:get_irc_stream(Stream)),
+       asserta(info:get_tcp_socket(Me, Socket)),
+       asserta(info:get_irc_stream(Me, Stream)),
        register_and_join
     ),
     read_server_loop(_Reply),
@@ -59,10 +60,11 @@ register_and_join :-
 %  user information is available at the top level throughout the program.
 
 init_structs(P_, N_, Chans_) :-
+  thread_self(Me),
   maplist(atom_string, Chans_, Chans),
   maplist(atom_string, [N_, P_, host, server, name], Strs),
   Strs = [N, P, Hn, Sn, Rn],
-  Connection =.. [connection, N, P, Chans, Hn, Sn, Rn],
+  Connection =.. [connection, Me, N, P, Chans, Hn, Sn, Rn],
   asserta(info:Connection).
 
 
@@ -78,9 +80,10 @@ init_structs(P_, N_, Chans_) :-
 %  The program will terminate successfully if EOF is reached.
 
 read_server_loop(Reply) :-
-  get_irc_stream(Stream),
+  thread_self(Me),
+  get_irc_stream(Me, Stream),
   init_timer(_TQ),
-  asserta(info:known(tq)),
+  asserta(info:known(Me, tq)),
   repeat,
     read_server(Reply, Stream), !.
 
@@ -107,11 +110,8 @@ read_server(Reply, Stream) :-
 
 read_server_handle(Reply) :-
   thread_self(Me),
-  G = maplist(predicate_property(P), [thread_local, imported_from(info)]),
-  findall(P, call(G), Ps),
-  maplist(ignore, Ps),
   parse_line(Reply, Msg),
-  thread_create(run_det(process_server(Me, Msg, Ps)), _Id, [detached(true)]),
+  thread_create(run_det(process_server(Me, Msg)), _Id, [detached(true)]),
   format('~s~n', [Reply]).
 
 
@@ -125,27 +125,24 @@ read_server_handle(Reply) :-
 %  serialized with respect to process_msg/1 so as to avoid race conditions.
 %  Anything else will be processed as an incoming message.
 
-process_server(Me, Msg, List) :-
-  maplist(asserta, List),
-  timer(T),
+process_server(Me, Msg) :-
+  timer(Me, T),
   thread_send_message(T, true),
   (  % Handle pings
      Msg = msg("PING", [], O),
      string_codes(Origin, O),
-     send_msg(pong, Origin)
+     thread_signal(Me, send_msg(pong, Origin))
   ;  % Get irc server and assert info
      Msg = msg(Server, "001", _, _),
-     (  get_irc_server(Me, Server)
-     -> true
-     ;  asserta(info:get_irc_server(Me, Server))
-     ),
-     asserta(info:known(irc_server)),
+     retractall(get_irc_server(Me,_)),
+     asserta(get_irc_server(Me,Server)),
+     asserta(known(Me,irc_server)),
      % Request own user info
-     connection(Nick,_,_,_,_,_),
+     connection(Me,Nick,_,_,_,_,_),
      send_msg(who, atom_string $ Nick)
   ;  % Get own host and nick info
      Msg = msg(_Server, "352", Params, _),
-     connection(N,_,_,_,_,_),
+     connection(Me, N,_,_,_,_,_),
      atom_string(N, Nick),
      Params = [_Asker, _Chan, H, Host, _, Nick| _],
      % Calculate the minimum length for a private message and assert info
@@ -163,7 +160,8 @@ process_server(Me, Msg, List) :-
 %
 %  Disconnect from the server, run cleanup routine, and attempt to reconnect.
 reconnect :-
-  c_specs(Host, Port, Pass, Nick, Chans),
+  thread_self(Me),
+  c_specs(Me, Host, Port, Pass, Nick, Chans),
   disconnect,
   repeat,
     writeln("Connection lost, attempting to reconnect ..."),
@@ -182,9 +180,9 @@ reconnect :-
 disconnect :-
   thread_self(Me),
   atom_concat(Me, '_ping_checker', Ping),
-  get_irc_stream(Stream),
+  get_irc_stream(Me, Stream),
   send_msg(quit),
-  timer(T),
+  timer(Me, T),
   message_queue_destroy(T),
   thread_join(Ping, _),
   close(Stream),
@@ -196,18 +194,18 @@ disconnect :-
 %  Retract all obsolete facts from info module.
 info_cleanup :-
   thread_self(Me),
-  (  get_tcp_socket(Socket)
+  (  get_tcp_socket(Me, Socket)
   -> ignore(catch(tcp_close_socket(Socket), _E, fail))
   ;  true
   ),
   maplist(retractall,
-    [ get_irc_stream(_)
-     ,get_tcp_socket(_)
-     ,connection(_,_,_,_,_,_)
+    [ get_irc_stream(Me,_)
+     ,get_tcp_socket(Me,_)
+     ,connection(Me,_,_,_,_,_,_)
      ,min_msg_len(Me,_)
      ,get_irc_server(Me,_)
-     ,get_irc_write_stream(_)
-     ,known(_) ]).
+     ,get_irc_write_stream(Me,_)
+     ,known(Me,_) ]).
 
 
 %--------------------------------------------------------------------------------%
@@ -221,10 +219,10 @@ info_cleanup :-
 %  checks connectivity of the client when established interval has passed.
 
 init_timer(Id) :-
-  thread_self(Self),
-  atom_concat(Self, '_tq', Timer),
-  atom_concat(Self, '_ping_checker', Checker),
-  asserta(info:timer(Timer)),
+  thread_self(Me),
+  atom_concat(Me, '_tq', Timer),
+  atom_concat(Me, '_ping_checker', Checker),
+  asserta(info:timer(Me,Timer)),
   message_queue_create(Id, [alias(Timer)]),
   thread_create(check_pings(Id), _, [alias(Checker)]).
 
@@ -238,11 +236,11 @@ init_timer(Id) :-
 %  for another ping signal.
 
 check_pings(Id) :-
-  thread_self(Self),
+  thread_self(Me),
   repeat,
     (  thread_get_message(Id, Goal, [timeout(300)])
     -> Goal
-    ;  thread_signal(Self, throw(abort))
+    ;  thread_signal(Me, throw(abort))
     ),
     fail.
 
@@ -254,7 +252,7 @@ check_pings(Id) :-
 %  server.
 
 restart :-
-  thread_self(Self),
-  thread_signal(Self, throw(abort)).
+  thread_self(Me),
+  thread_signal(Me, throw(abort)).
 
 
