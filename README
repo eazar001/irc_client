@@ -3,4 +3,11 @@ usage. For example, one can make a traditional bot, conversational
 analyzer, simple logging system, statistics tracker, or even a full
 blown IRC Chat application.
 
+The main framework for this was directly taken out of a prolog IRC bot
+called Yesbot, as an effort to provide more generic utilities for
+these types of applications.
+
+There is an examples folder containing examples that demonstrate how
+this is meant to be used for the moment.
+
 This still needs a lot of polish and is not ready for consumption yet.
