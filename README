@@ -1,7 +1,6 @@
-This a low leveel IRC client library for making anything related to IRC usage.
-For example, one can make a traditional bot, conversational analyzer, simple
-logging system, statistics tracker, or even a full blown IRC Chat application.
+This a low level IRC client library for making anything related to IRC
+usage. For example, one can make a traditional bot, conversational
+analyzer, simple logging system, statistics tracker, or even a full
+blown IRC Chat application.
 
-This still needs a lot of polish and is not ready for consumption yet. The
-basic framework for this library was taken straight out of a prolog bot called
-Yesbot as an effort to provide more generic utilities for this sort of thing.
+This still needs a lot of polish and is not ready for consumption yet.
