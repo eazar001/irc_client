@@ -13,9 +13,9 @@
 :- use_module(library(func)).
 
 :- reexport(dispatch,
-     [ send_msg/1
-      ,send_msg/2
-      ,send_msg/3 ]).
+     [ send_msg/2
+      ,send_msg/3
+      ,send_msg/4 ]).
 
 
 %--------------------------------------------------------------------------------%
@@ -51,7 +51,8 @@ connect(Host, Port, Pass, Nick, Chans) :-
 %
 %  Present credentials and register user on the irc server.
 register_and_join :-
-  maplist(send_msg, [pass, user, nick, join]).
+  thread_self(Me),
+  maplist(send_msg(Me), [pass, user, nick, join]).
 
 
 %% init_structs is det.
@@ -131,7 +132,7 @@ process_server(Me, Msg) :-
   (  % Handle pings
      Msg = msg("PING", [], O),
      string_codes(Origin, O),
-     thread_signal(Me, send_msg(pong, Origin))
+     send_msg(Me, pong, Origin)
   ;  % Get irc server and assert info
      Msg = msg(Server, "001", _, _),
      retractall(get_irc_server(Me,_)),
@@ -139,7 +140,7 @@ process_server(Me, Msg) :-
      asserta(known(Me,irc_server)),
      % Request own user info
      connection(Me,Nick,_,_,_,_,_),
-     send_msg(who, atom_string $ Nick)
+     send_msg(Me, who, atom_string $ Nick)
   ;  % Get own host and nick info
      Msg = msg(_Server, "352", Params, _),
      connection(Me, N,_,_,_,_,_),
@@ -181,7 +182,7 @@ disconnect :-
   thread_self(Me),
   atom_concat(Me, '_ping_checker', Ping),
   get_irc_stream(Me, Stream),
-  send_msg(quit),
+  send_msg(Me, quit),
   timer(Me, T),
   message_queue_destroy(T),
   thread_join(Ping, _),
