@@ -4,11 +4,11 @@
 
 :- module(utilities,
      [ run_det/1
-      ,priv_msg/2
       ,priv_msg/3
-      ,priv_msg_rest/3
+      ,priv_msg/4
       ,priv_msg_rest/4
-      ,priv_msg_paragraph/3 ]).
+      ,priv_msg_rest/5
+      ,priv_msg_paragraph/4 ]).
 
 
 :- use_module(info).
@@ -26,9 +26,9 @@
 
 %% run_det(:Goal) is det.
 %
-%  Find all the solutions to an extensionized goal in order to precipitate the
-%  result as an unevaluated deterministic result. Used here for deterministically
-%  evaluating a possibly nondet or semidet prediciate concurrently.
+%  Find all the solutions to a goal in order to precipitate the result as a
+%  deterministic result. Used here for deterministically evaluating a possibly
+%  nondet concurrently.
 
 :- meta_predicate run_det(0).
 run_det(Goal) :-
@@ -52,24 +52,24 @@ run_det(Goal) :-
 %  IRC channels. If there are any newlines they will be converted into individual
 %  messages (i.e. paragraph style handling).
 
-priv_msg(Text, Recipient) :-
-  priv_msg_rest(Text, Recipient, _, [auto_nl(true)]).
+priv_msg(Id, Text, Recipient) :-
+  priv_msg_rest(Id, Text, Recipient, _, [auto_nl(true)]).
 
 
-priv_msg(Text, Recipient, Options) :-
-  priv_msg_rest(Text, Recipient, _, Options).
+priv_msg(Id, Text, Recipient, Options) :-
+  priv_msg_rest(Id, Text, Recipient, _, Options).
 
 
-priv_msg_rest(Text, Recipient, Rest) :-
-  priv_msg_rest(Text, Recipient, Rest, [auto_nl(true)]).
+priv_msg_rest(Id, Text, Recipient, Rest) :-
+  priv_msg_rest(Id, Text, Recipient, Rest, [auto_nl(true)]).
 
 
-priv_msg_rest(Text, Recipient, Rest, Options) :-
-  Send_msg = (\Msg^send_msg(priv_msg, Msg, Recipient)),
+priv_msg_rest(Id, Text, Recipient, Rest, Options) :-
+  Send_msg = (\Msg^send_msg(Id, priv_msg, Msg, Recipient)),
   option(encoding(Encoding), Options, utf8),
-  get_irc_write_stream(Stream),
+  get_irc_write_stream(Id, Stream),
   set_stream(Stream, encoding(Encoding)),
-  priv_msg_paragraph(Text, Recipient, Paragraph),
+  priv_msg_paragraph(Id, Text, Recipient, Paragraph),
   (  option(auto_nl(true), Options, true)
   -> option(at_most(Limit), Options, length $ Paragraph),  % auto-nl
      split_at(Limit, Paragraph, P, Rest),
@@ -82,8 +82,8 @@ priv_msg_rest(Text, Recipient, Rest, Options) :-
   ).
 
 
-priv_msg_paragraph(Text, Recipient, Paragraph) :-
-  min_msg_len(Min),
+priv_msg_paragraph(Id, Text, Recipient, Paragraph) :-
+  min_msg_len(Id, Min),
   string_length(Recipient, N0),
   N is N0 + Min,
   Length is 508 - N,
