@@ -3,7 +3,7 @@
 :- module(irc_client,
      [ assert_handlers/2
       ,connect/5
-      ,disconnect/0 ]).
+      ,disconnect/1 ]).
 
 
 :- use_module(info).
@@ -42,20 +42,15 @@
 connect(Host, Port, Pass, Nick, Chans) :-
   thread_self(Me),
   asserta(info:c_specs(Me,Host,Port,Pass,Nick,Chans)),
-  setup_call_cleanup(
-    (  init_structs(Pass, Nick, Chans),
-       tcp_socket(Socket),
-       tcp_connect(Socket, Host:Port, Stream),
-       stream_pair(Stream, _Read, Write),
-       asserta(info:get_irc_write_stream(Me, Write)),
-       set_stream(Write, encoding(utf8)),
-       asserta(info:get_tcp_socket(Me, Socket)),
-       asserta(info:get_irc_stream(Me, Stream)),
-       register_and_join
-    ),
-    read_server_loop(_Reply),
-    reconnect
-  ).
+  init_structs(Pass, Nick, Chans),
+  tcp_socket(Socket),
+  tcp_connect(Socket, Host:Port, Stream),
+  stream_pair(Stream, _Read, Write),
+  asserta(info:get_irc_write_stream(Me, Write)),
+  set_stream(Write, encoding(utf8)),
+  asserta(info:get_irc_stream(Me, Stream)),
+  register_and_join,
+  read_server_loop(_Reply).
 
 
 %% register_and_join is semidet.
@@ -211,31 +206,30 @@ reconnect :-
 %  Clean up top level information access structures, issue a disconnect command
 %  to the irc server, close the socket stream pair, and attempt to reconnect.
 
-disconnect :-
-  thread_self(Me),
+disconnect(Me) :-
   atom_concat(Me, '_ping_checker', Ping),
-  get_irc_stream(Me, Stream),
-  send_msg(Me, quit),
-  timer(Me, T),
-  message_queue_destroy(T),
-  thread_join(Ping, _),
-  close(Stream),
-  info_cleanup.
+  info_cleanup(Me),
+  thread_signal(Ping, throw(abort)),
+  thread_join(Ping, _Status),
+  retractall(get_irc_stream(Me,Stream)),
+  retractall(timer(Me,Q)),
+  (  message_queue_property(Q, alias(_))
+  -> message_queue_destroy(Q)
+  ;  true
+  ),
+  (  catch(stream_property(Stream, _), _Error, fail)
+  -> close(Stream)
+  ;  true
+  ).
 
 
 %% info_cleanup is det.
 %
 %  Retract all obsolete facts from info module.
-info_cleanup :-
-  thread_self(Me),
-  (  get_tcp_socket(Me, Socket)
-  -> ignore(catch(tcp_close_socket(Socket), _E, fail))
-  ;  true
-  ),
+info_cleanup(Me) :-
   maplist(retractall,
-    [ get_irc_stream(Me,_)
-     ,get_tcp_socket(Me,_)
-     ,connection(Me,_,_,_,_,_,_)
+    [ connection(Me,_,_,_,_,_,_)
+     ,c_specs(Me,_,_,_,_,_)
      ,min_msg_len(Me,_)
      ,get_irc_server(Me,_)
      ,get_irc_write_stream(Me,_)
