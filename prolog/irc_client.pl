@@ -2,7 +2,7 @@
 
 :- module(irc_client,
      [ assert_handlers/2
-      ,connect/5
+      ,connect/6
       ,disconnect/1 ]).
 
 
@@ -39,10 +39,10 @@
 %  Open socket on host, port, nick, user, with the specified password and channels
 %  to be joined.
 
-connect(Host, Port, Pass, Nick, Chans) :-
+connect(Host, Port, Pass, Nick, Names, Chans) :-
   thread_self(Me),
-  asserta(info:c_specs(Me,Host,Port,Pass,Nick,Chans)),
-  init_structs(Pass, Nick, Chans),
+  asserta(info:c_specs(Me,Host,Port,Pass,Nick,Names,Chans)),
+  init_structs(Pass, Nick, Names, Chans),
   tcp_socket(Socket),
   tcp_connect(Socket, Host:Port, Stream),
   stream_pair(Stream, _Read, Write),
@@ -66,10 +66,11 @@ register_and_join :-
 %  Assert the 'connection' structure at the top level so that access to important
 %  user information is available at the top level throughout the program.
 
-init_structs(P_, N_, Chans_) :-
+init_structs(P_, N_, Names, Chans_) :-
   thread_self(Me),
+  Names = [Hn_, Sn_, Rn_],
   maplist(atom_string, Chans_, Chans),
-  maplist(atom_string, [N_, P_, host, server, name], Strs),
+  maplist(atom_string, [N_, P_, Hn_, Sn_, Rn_], Strs),
   Strs = [N, P, Hn, Sn, Rn],
   Connection =.. [connection, Me, N, P, Chans, Hn, Sn, Rn],
   asserta(info:Connection).
