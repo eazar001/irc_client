@@ -12,6 +12,7 @@
 
 
 :- use_module(info).
+:- use_module(dispatch).
 :- use_module(library(func)).
 :- use_module(library(lambda)).
 :- use_module(library(dcg/basics)).

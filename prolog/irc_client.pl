@@ -6,17 +6,26 @@
       ,disconnect/1 ]).
 
 
-:- use_module(info).
-:- use_module(parser).
-:- use_module(dispatch).
-:- use_module(utilities).
 :- use_module(library(socket)).
 :- use_module(library(func)).
+:- use_module(info).
+
+:- reexport(info).
+
+:- use_module(parser).
+
+:- reexport(parser,
+     [ prefix_id/2
+      ,prefix_id/4 ]).
+
+:- use_module(dispatch).
 
 :- reexport(dispatch,
      [ send_msg/2
       ,send_msg/3
       ,send_msg/4 ]).
+
+:- use_module(utilities).
 
 :- reexport(utilities,
      [ priv_msg/3
@@ -24,9 +33,6 @@
       ,priv_msg_rest/4
       ,priv_msg_rest/5
       ,priv_msg_paragraph/4 ]).
-
-
-:- dynamic handle_server/2.
 
 
 %--------------------------------------------------------------------------------%
@@ -40,17 +46,22 @@
 %  to be joined.
 
 connect(Host, Port, Pass, Nick, Names, Chans) :-
-  thread_self(Me),
-  asserta(info:c_specs(Me,Host,Port,Pass,Nick,Names,Chans)),
-  init_structs(Pass, Nick, Names, Chans),
-  tcp_socket(Socket),
-  tcp_connect(Socket, Host:Port, Stream),
-  stream_pair(Stream, _Read, Write),
-  asserta(info:get_irc_write_stream(Me, Write)),
-  set_stream(Write, encoding(utf8)),
-  asserta(info:get_irc_stream(Me, Stream)),
-  register_and_join,
-  read_server_loop(_Reply).
+  setup_call_cleanup(
+    (  thread_self(Me),
+       asserta(info:c_specs(Me,Host,Port,Pass,Nick,Names,Chans)),
+       init_structs(Pass, Nick, Names, Chans),
+       tcp_socket(Socket),
+       tcp_connect(Socket, Host:Port, Stream),
+       stream_pair(Stream, _Read, Write),
+       asserta(info:get_irc_write_stream(Me, Write)),
+       set_stream(Write, encoding(utf8)),
+       asserta(info:get_irc_stream(Me, Stream))
+    ),
+    (  register_and_join,
+       read_server_loop(_Reply)
+    ),
+    disconnect(Me)
+  ).
 
 
 %% register_and_join is semidet.
@@ -143,8 +154,8 @@ process_server(Me, Msg) :-
   ;  % Get irc server and assert info
      Msg = msg(Server, "001", _, _),
      retractall(get_irc_server(Me,_)),
-     asserta(get_irc_server(Me,Server)),
-     asserta(known(Me,irc_server)),
+     asserta(info:get_irc_server(Me,Server)),
+     asserta(info:known(Me,irc_server)),
      % Request own user info
      connection(Me,Nick,_,_,_,_,_),
      send_msg(Me, who, atom_string $ Nick)
@@ -158,7 +169,7 @@ process_server(Me, Msg) :-
      asserta(info:min_msg_len(Me, string_length $ Template))
   ;  handle_server(Me, Goals),
      Goals \= [],
-     maplist(process_msg(Msg), Goals)
+     maplist(process_msg(Me-Msg), Goals)
   ).
 
 
@@ -169,14 +180,11 @@ process_server(Me, Msg) :-
 %  directive in the user's program.
 
 assert_handlers(Id, Handlers) :-
-  (  \+ handle_server(_,_)
-  -> retractall(handle_server(_,_))
-  ;  true
-  ),
-  asserta(handle_server(Id, Handlers)).
+  retractall(handle_server(_,_)),
+  asserta(info:handle_server(Id, Handlers)).
 
 
-:- meta_predicate process_msg(+, 0).
+:- meta_predicate process_msg(+, 1).
 process_msg(Msg, Goal) :-
   call(Goal, Msg).
 
@@ -208,10 +216,11 @@ reconnect :-
 %  to the irc server, close the socket stream pair, and attempt to reconnect.
 
 disconnect(Me) :-
+  send_msg(Me, quit),
   atom_concat(Me, '_ping_checker', Ping),
   info_cleanup(Me),
-  thread_signal(Ping, throw(abort)),
-  thread_join(Ping, _Status),
+  catch(thread_signal(Ping, throw(abort)), _E1, true),
+  catch(thread_join(Ping, _Status), _E2, true),
   retractall(get_irc_stream(Me,Stream)),
   retractall(timer(Me,Q)),
   (  message_queue_property(Q, alias(_))
@@ -232,6 +241,7 @@ info_cleanup(Me) :-
     [ connection(Me,_,_,_,_,_,_)
      ,c_specs(Me,_,_,_,_,_)
      ,min_msg_len(Me,_)
+     ,handle_server(Me,_)
      ,get_irc_server(Me,_)
      ,get_irc_write_stream(Me,_)
      ,known(Me,_) ]).
@@ -265,11 +275,10 @@ init_timer(Id) :-
 %  for another ping signal.
 
 check_pings(Id) :-
-  thread_self(Me),
   repeat,
     (  thread_get_message(Id, Goal, [timeout(300)])
     -> Goal
-    ;  thread_signal(Me, throw(abort))
+    ;  throw(abort)
     ),
     fail.
 

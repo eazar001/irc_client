@@ -2,9 +2,10 @@
 %% Parsing module
 
 
-:- module(parser, [ parse_line/2
-		   ,prefix_id/2
-		   ,prefix_id/4 ]).
+:- module(parser,
+     [ parse_line/2
+      ,prefix_id/2
+      ,prefix_id/4 ]).
 
 
 /*
