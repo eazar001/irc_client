@@ -216,7 +216,7 @@ reconnect :-
 %  to the irc server, close the socket stream pair, and attempt to reconnect.
 
 disconnect(Me) :-
-  send_msg(Me, quit),
+  catch(send_msg(Me, quit), _E0, true),
   atom_concat(Me, '_ping_checker', Ping),
   info_cleanup(Me),
   catch(thread_signal(Ping, throw(abort)), _E1, true),
