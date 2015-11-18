@@ -4,7 +4,11 @@
 
 :- initialization run.
 
-:- assert_handlers([hello, write_out]).
+:- assert_handlers(_, [hello, write_out]).
+
+
+% TBD: Make clear example.
+
 
 hello(_) :-
   writeln(say_hello).
@@ -21,10 +25,10 @@ run :-
 
 
 connect :-
-  connect('chat.freenode.net', 6667, pass, userbot, ['##prolog','#coq']).
+  connect('chat.freenode.net', 6667, pass, userbot, [host,server,real], ['##prolog', '#coq']).
 
 connect_2 :-
-  connect('chat.freenode.net', 6667, pass, userbot2, ['#erlang']).
+  connect('chat.freenode.net', 6667, pass, userbot2, [host,server,real], ['#math']).
 
 connect_3 :-
-  connect('irc.choopa.net', 6667, pass, userbot3, ['#iphone']).
+  connect('irc.choopa.net', 6667, pass, userbot3, [host,server,real], ['#iphone']).

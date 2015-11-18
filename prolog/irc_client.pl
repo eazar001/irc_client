@@ -140,9 +140,7 @@ read_server_handle(Reply) :-
 %  responding with a pong to keep the connection alive. If the message is "001"
 %  or a server "welcome", then a successful connection to a server will be
 %  assumed. In this case, all instances of get_irc_server/1 will be retracted,
-%  and the new server will be asserted for use. It is important that this is
-%  serialized with respect to process_msg/1 so as to avoid race conditions.
-%  Anything else will be processed as an incoming message.
+%  and the new server will be asserted for use.
 
 process_server(Me, Msg) :-
   timer(Me, T),
@@ -177,7 +175,8 @@ process_server(Me, Msg) :-
 %
 %  Assert handlers at the toplevel, where Handlers is a potentially empty list
 %  of goals to be called as irc messages come in. This is meant to be used as a
-%  directive in the user's program.
+%  directive in the user's program; however, there are plenty of cases where
+%  it's acceptable to call this as a normal goal during runtime.
 
 assert_handlers(Id, Handlers) :-
   retractall(handle_server(_,_)),
@@ -192,22 +191,6 @@ process_msg(Msg, Goal) :-
 %--------------------------------------------------------------------------------%
 % Cleanup/Termination
 %--------------------------------------------------------------------------------%
-
-
-%% reconnect is semidet.
-%
-%  Disconnect from the server, run cleanup routine, and attempt to reconnect.
-reconnect :-
-  thread_self(Me),
-  c_specs(Me, Host, Port, Pass, Nick, Chans),
-  disconnect,
-  repeat,
-    writeln("Connection lost, attempting to reconnect ..."),
-    (  catch(connect(Host, Port, Pass, Nick, Chans), _E, fail)
-    -> !
-    ;  sleep(30),
-       fail
-    ).
 
 
 %% disconnect is semidet.
@@ -281,16 +264,4 @@ check_pings(Id) :-
     ;  throw(abort)
     ),
     fail.
-
-
-%% restart is semidet.
-%
-%  Signals the main connection thread with an exception that will trigger the
-%  the main connection predicate to disconnect, cleanup, and reconnect to the
-%  server.
-
-restart :-
-  thread_self(Me),
-  thread_signal(Me, throw(abort)).
-
 

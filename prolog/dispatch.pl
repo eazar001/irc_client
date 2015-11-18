@@ -1,11 +1,4 @@
 
-%% Message dispatching module
-%
-% This is a switchboard for routing message types to the correct message
-% templates. Once the message template and respective substitution list is
-% unified with the type, the process is consummated by dispatching the
-% message through the stream.
-
 :- module(dispatch,
      [ send_msg/2
       ,send_msg/3
@@ -15,13 +8,21 @@
 :- use_module(info).
 :- use_module(operator).
 
+/** <module> Message dispatching
 
+This is a switchboard for routing message types to the correct message
+templates. Once the message template and respective substitution list is
+unified with the type, the process is consummated by dispatching the
+message through the stream.
+
+@tbd Implement more message types
+*/
+
+  
 %--------------------------------------------------------------------------------%
 % Command Routing
 %--------------------------------------------------------------------------------%
 
-
-% FIXME: Not all message types from operator are implemented yet.
 
 %% return_server(-Server:string) is det.
 %
@@ -151,5 +152,4 @@ send_msg_type(Type, Chan, Target) :-
   flush_output(Stream),
   timer(Me, T),
   thread_send_message(T, true).
-
 

@@ -1,7 +1,4 @@
 
-%% Utilities module for anything that might be generally useful for Yesbot
-
-
 :- module(utilities,
      [ run_det/1
       ,priv_msg/3
@@ -108,5 +105,4 @@ insert_nl_at([X|Xs], [X|Ys], N, N0) :-
 
 insert_nl_at([X|Xs], [X,10|Ys], N, 1) :-
   insert_nl_at(Xs, Ys, N, N).
-
 
