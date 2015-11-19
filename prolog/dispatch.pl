@@ -111,12 +111,7 @@ send_msg_type(Type) :-
 %  Send message of Type with attention to some parameter Param.
 send_msg_type(Type, Param) :-
   cmd(Type, Msg),
-  cmd_params(Type, 1),
-  (  Type = pong
-  -> dbg(pong, Debug),
-     format(Debug, [Param])
-  ;  true
-  ), !, % green, no further matches
+  cmd_params(Type, 1), !, % green, no further matches
   thread_self(Me),
   get_irc_stream(Me, Stream),
   format(Stream, Msg, [Param]),

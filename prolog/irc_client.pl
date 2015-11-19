@@ -1,5 +1,4 @@
 
-
 :- module(irc_client,
      [ assert_handlers/2
       ,connect/6
@@ -130,11 +129,10 @@ read_server(Reply, Stream) :-
 read_server_handle(Reply) :-
   thread_self(Me),
   parse_line(Reply, Msg),
-  thread_create(run_det(process_server(Me, Msg)), _Id, [detached(true)]),
-  format('~s~n', [Reply]).
+  thread_create(run_det(process_server(Me, Msg)), _Id, [detached(true)]).
 
 
-%% process_server(+Me, +Msg:compound, +Goals) is nondet.
+%% process_server(+Me, +Msg:compound) is nondet.
 %
 %  All processing of server message will be handled here. Pings will be handled by
 %  responding with a pong to keep the connection alive. If the message is "001"
@@ -159,7 +157,7 @@ process_server(Me, Msg) :-
      send_msg(Me, who, atom_string $ Nick)
   ;  % Get own host and nick info
      Msg = msg(_Server, "352", Params, _),
-     connection(Me, N,_,_,_,_,_),
+     connection(Me,N,_,_,_,_,_),
      atom_string(N, Nick),
      Params = [_Asker, _Chan, H, Host, _, Nick| _],
      % Calculate the minimum length for a private message and assert info
@@ -171,15 +169,18 @@ process_server(Me, Msg) :-
   ).
 
 
-%% assert_handlers(?Id, +Handlers) is det.
+%% assert_handlers(+Id, +Handlers) is det.
 %
 %  Assert handlers at the toplevel, where Handlers is a potentially empty list
 %  of goals to be called as irc messages come in. This is meant to be used as a
 %  directive in the user's program; however, there are plenty of cases where
 %  it's acceptable to call this as a normal goal during runtime.
+%
+%  @throws instantiation error if Id is not ground
 
 assert_handlers(Id, Handlers) :-
-  retractall(handle_server(_,_)),
+  must_be(ground, Id),
+  retractall(handle_server(Id,_)),
   asserta(info:handle_server(Id, Handlers)).
 
 
