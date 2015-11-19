@@ -176,7 +176,7 @@ process_server(Me, Msg) :-
 %  directive in the user's program; however, there are plenty of cases where
 %  it's acceptable to call this as a normal goal during runtime.
 %
-%  @throws instantiation error if Id is not ground
+%  @throws instantiation_error if Id is not ground
 
 assert_handlers(Id, Handlers) :-
   must_be(ground, Id),

@@ -10,6 +10,11 @@
 % connection. The second argument is a list of event goals to be be applied to
 % incoming server messages. The connection Id _must_ be ground.
 
+% Below, we have use assert_handlers/2 as a directive, but they may not be in
+% in your application. If assert_handlers/2 is used in a module file, then you
+% must make sure that your module exports the event predicates that you want to
+% use with assert_handlers/2.
+
 :- assert_handlers(ct1, [output, echo_connected]).
 :- assert_handlers(ct2, [output, echo_connected]).
 
