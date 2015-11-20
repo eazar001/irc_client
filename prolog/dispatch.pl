@@ -49,32 +49,8 @@ cmd_params(Type, N) :-
 %% send_msg(+Id, +Type) is semidet.
 %
 %  Send a Type of message from connection Id.
-send_msg(Id, Type) :-
-  thread_signal(Id, send_msg_type(Type)).
-
-
-%% send_msg(+Id, +Type, +Param) is semidet.
-%
-%  Send a Type of message with attention to some Param from connection Id.
-send_msg(Id, Type, Param) :-
-  thread_signal(Id, send_msg_type(Type, Param)).
-
-
-%% send_msg(+Id, +Type, +Str, +Target) is semidet.
-%
-%  Send a Type of message with attention to Str directed at a Target from
-%  connection Id.
-
-send_msg(Id, Type, Str, Target) :-
-  thread_signal(Id, send_msg_type(Type, Str, Target)).
-
-
-%% send_msg_type(+Type:atom) is semidet.
-%
-%  Send a message of Type.
-send_msg_type(Type) :-
+send_msg(Me, Type) :-
   cmd(Type, Msg),
-  thread_self(Me),
   get_irc_stream(Me, Stream),
   cmd_params(Type, 0), !, % green, no further matches
   write(Stream, Msg),
@@ -84,9 +60,8 @@ send_msg_type(Type) :-
 
 % This clause will deal with deal with message types that are possibly
 % timer-independent
-send_msg_type(Type) :-
+send_msg(Me, Type) :-
   cmd(Type, Msg),
-  thread_self(Me),
   get_irc_stream(Me, Stream),
   connection(Me, Nick, Pass, Chans, HostName, ServerName, RealName),
   (  Type = pass,
@@ -106,13 +81,12 @@ send_msg_type(Type) :-
   ).
 
 
-%% send_msg_type(+Type:atom, +Param:string) is semidet.
+%% send_msg(+Id, +Type, +Param) is semidet.
 %
-%  Send message of Type with attention to some parameter Param.
-send_msg_type(Type, Param) :-
+%  Send a Type of message with attention to some Param from connection Id.
+send_msg(Me, Type, Param) :-
   cmd(Type, Msg),
   cmd_params(Type, 1), !, % green, no further matches
-  thread_self(Me),
   get_irc_stream(Me, Stream),
   format(Stream, Msg, [Param]),
   flush_output(Stream),
@@ -120,14 +94,14 @@ send_msg_type(Type, Param) :-
   thread_send_message(T, true).
 
 
-%% send_msg_type(+Type:atom, +Str:text, +Target:string) is semidet.
+%% send_msg(+Id, +Type, +Str, +Target) is semidet.
 %
-%  Send a Str of Type to a specified Target.
-send_msg_type(Type, Str, Target) :-
+%  Send a Type of message with attention to Str directed at a Target from
+%  connection Id.
+send_msg(Me, Type, Str, Target) :-
   cmd(Type, Msg),
   cmd_params(Type, 2),
   \+member(Type, [kick, invite]), !, % green, no further matches
-  thread_self(Me),
   get_irc_stream(Me, Stream),
   format(Stream, Msg, [Target, Str]),
   flush_output(Stream),
@@ -135,9 +109,8 @@ send_msg_type(Type, Str, Target) :-
   thread_send_message(T, true).
 
 % Send a message of Type with respect to Chan, to the Target.
-send_msg_type(Type, Chan, Target) :-
+send_msg(Me, Type, Chan, Target) :-
   cmd(Type, Msg),
-  thread_self(Me),
   get_irc_stream(Me, Stream),
   (  Type = kick,
      format(Stream, Msg, [Chan, Target])
