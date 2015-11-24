@@ -38,15 +38,58 @@ this library can be found at: https://github.com/eazar001/yesbot
 ?- send_msg(efnet, quit).
 ```
 
+One of the most important predicates is `priv_msg/N`. This is needed
+for sending private messages to channels, or to individual users.
+
+* priv_msg(+Id, +Text, +Recipient)
+  This will send Text to the Recipient, on the connection Id. Id is
+  an atom; Text and Recipient are strings. If the character limit is
+  exceeded, the text will automatically be segmented into several
+  messages, until the full message is delivered.
+
+* priv_msg(+Id, +Text, +Recipient, :Options).
+  Here one has special options. `auto_nl(Boolean)` where Boolean can be
+  specified as true or false. If true, messages that are too large
+  will be automatically segmented into multiple messages. `at_most(N)`,
+  where N represents the number of lines that will be sent (at most).
+  This is useful for rate limiting.
+
+Another important group of predicates is `send_msg/N`. This group of
+predicates is responsible for sending certain types of messages that
+are responsible for carrying out various IRC actions. A basic
+understanding of IRC protocols is required to use these. The arity (N)
+of send_msg/N, at this point, ranges from 2 to 4. ALL OF THESE commands
+must have the first argument as the connection ID to send the message
+on. The format for these commands are listed below:
+
+* send_msg(ID, admin, "target").
+* send_msg(ID, away, "away message")
+* send_msg(ID, help)
+* send_msg(ID, info).
+* send_msg(ID, links).
+* send_msg(ID, lusers, "##channel").
+* send_msg(ID, names, "##channel").
+* send_msg(ID, oper, "username", "pass").
+* send_msg(ID, rules).
+* send_msg(ID, userip, "nick").
+* send_msg(ID, users).
+* send_msg(ID, who_op, "##channel").
+* send_msg(ID, who_ops).
+* send_msg(ID, whois, "nick").
+* send_msg(ID, whowas, "nick").
+* send_msg(ID, notice, "message", "chan or nick").
+* send_msg(ID, time, "server").
+* send_msg(ID, kick, "##channel", "user").
+* send_msg(ID, invite, "user", "##channel").
+* send_msg(ID, topic, "##channel", "topic message").
+* send_msg(ID, quit).
+* send_msg(ID, nick, "nickname").
+* send_msg(ID, join, "channel").
+
 There is an examples folder containing examples (with comments) that
 demonstrate how this is meant to be used.
 
 # What else?
-
-There are more commands that have been implemented; there are also more
-to come in the future. Not all of these have been explained above, but
-but they will be documented eventually. As for now, see the file
-`operator.pl`, for a list of available commands.
 
 I will add more commands and features as I find time to work on this,
 but for now ... pull requests are very much welcome.

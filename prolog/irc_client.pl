@@ -43,7 +43,8 @@ information sets are maintained here.
 
 @tbd Add some thread abstractions for establishing connections
 @tbd Link more commands from operator.pl to dispatch.pl
-@tbd More documentation of pack useage is needed
+@tbd More documentation of pack useage is needed, perhaps even wiki
+@tbd Add direct support for CTCP actions
 
 */
 

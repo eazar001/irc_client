@@ -15,7 +15,7 @@
 % Convenience commands for specific message relays.
 
 
-%% cmd(+Type:atom, -Template:atom) is semidet.
+%% cmd(+Type, -Template) is semidet.
 %
 %  Attempt to unify with a type and a corresponding string template. The string
 %  template will be fed to dispatch in order to send a message.
@@ -163,7 +163,7 @@ cmd(quit, 'QUIT :disconnect\r\n').
 % Debugging
 %--------------------------------------------------------------------------------%
 
-%% dbg(+Type:atom, -Template:atom) is semidet.
+%% dbg(+Type, -Template) is semidet.
 %
 %  This is used to debug pings, to ensure the client that pongs are being sent.
 

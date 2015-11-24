@@ -61,8 +61,12 @@ priv_msg(Id, Text, Recipient) :-
 %
 %  Like priv_msg/3 except with explicit options.
 %
-%  @arg Options includes: =|auto_nl(Boolean)|=, where Boolean is true or false;
-%  =|at_most(N)|=, where N is the maximum amount of lines to print.
+%  Options include:
+%  * auto_nl(Boolean)
+%  Boolean is true or false, if true messages will be automatically segmented
+%  for complete output via IRC (in order to avoid truncation by char limits).
+%  * at_most(N)
+%   where N is the maximum amount of lines to print. Default is entire paragraph.
 
 priv_msg(Id, Text, Recipient, Options) :-
   priv_msg_rest(Id, Text, Recipient, _, Options).
@@ -70,7 +74,7 @@ priv_msg(Id, Text, Recipient, Options) :-
 
 %% priv_msg_rest(+Id, +Text, +Recipient, -Rest) is det.
 %
-%  Same as priv_msg/3, except Rest is the remaineder of a message.
+%  Same as priv_msg/3, except Rest is the remainder of a message.
 priv_msg_rest(Id, Text, Recipient, Rest) :-
   priv_msg_rest(Id, Text, Recipient, Rest, [auto_nl(true)]).
 

@@ -26,7 +26,7 @@ message through the stream.
 
 %% cmd_params(+Type, -N) is semidet.
 %
-%  True if N is the number of paramteres in Type's template.
+%  True if N is the number of parameters in Type's template.
 cmd_params(Type, N) :-
   cmd(Type, Template),
   split_string(Template, "~", "\r~n", [_|Params]),
