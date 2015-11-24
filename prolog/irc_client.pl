@@ -34,6 +34,20 @@
       ,priv_msg_paragraph/4 ]).
 
 
+/** <module> irc_client main interface
+This is the main interface to irc_client. Connections and their respective
+information sets are maintained here.
+
+@author Ebrahim Azarisooreh
+@license MIT
+
+@tbd Add some thread abstractions for establishing connections
+@tbd Link more commands from operator.pl to dispatch.pl
+@tbd More documentation of pack useage is needed
+
+*/
+
+
 %--------------------------------------------------------------------------------%
 % Connection Details
 %--------------------------------------------------------------------------------%
