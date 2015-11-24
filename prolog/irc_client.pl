@@ -39,10 +39,18 @@
 %--------------------------------------------------------------------------------%
 
 
-%% connect is nondet.
+%% connect(+Host, +Port, +Pass, +Nick, +Names, +Chans) is nondet.
 %
-%  Open socket on host, port, nick, user, with the specified password and channels
-%  to be joined.
+%  Open socket on host, port, nick, user, with the specified password, names,
+%  and channels to be joined.
+%
+%  @arg Host An atom that represents the address of the IRC host to connect to
+%  @arg Port A positive integer that represents the port to connect to
+%  @arg Pass An atom that represents the password of the connection
+%  @arg Nick an atom that represents the nickname of the user's connection
+%  @arg Names A list containing three three atoms of the format:
+%  =|[Hostname, Servername, Realname]|=
+%  @arg Chans A list of atoms, each atom representing a channel to connect to
 
 connect(Host, Port, Pass, Nick, Names, Chans) :-
   setup_call_cleanup(
@@ -91,11 +99,12 @@ init_structs(P_, N_, Names, Chans_) :-
 %--------------------------------------------------------------------------------%
 
 
-%% read_server_loop(-Reply:codes) is nondet.
+%% read_server_loop(-Reply) is nondet.
 %
 %  Read the server output one line at a time. Each line will be sent directly
 %  to a predicate that is responsible for handling the output that it receives.
-%  The program will terminate successfully if EOF is reached.
+%  The program will terminate successfully if EOF is reached. Reply is a list
+%  of codes that represents one line of a relayed IRC server message.
 
 read_server_loop(Reply) :-
   thread_self(Me),
@@ -106,7 +115,7 @@ read_server_loop(Reply) :-
     read_server(Reply, Stream), !.
 
 
-%% read_server(-Reply:codes, +Stream) is nondet.
+%% read_server(-Reply, +Stream) is nondet.
 %
 %  Translate server line to codes. If the codes are equivalent to EOF then succeed
 %  and go back to the main loop for termination. If not then then display the
@@ -121,10 +130,11 @@ read_server(Reply, Stream) :-
   ).
 
 
-%% read_server_handle(+Reply:codes) is det.
+%% read_server_handle(+Reply) is det.
 %
-%  Concurrently process server lines via loaded extensions and output the server
-%  line to stdout for debugging.
+%  Process the current line relayed by the IRC server via the user's asserted
+%  handlers (if any). Other essential non-user related actions are called 
+%  from this point as well.
 
 read_server_handle(Reply) :-
   thread_self(Me),
@@ -132,13 +142,15 @@ read_server_handle(Reply) :-
   thread_create(run_det(process_server(Me, Msg)), _Id, [detached(true)]).
 
 
-%% process_server(+Me, +Msg:compound) is nondet.
+%% process_server(+Me, +Msg) is nondet.
 %
 %  All processing of server message will be handled here. Pings will be handled by
 %  responding with a pong to keep the connection alive. If the message is "001"
 %  or a server "welcome", then a successful connection to a server will be
 %  assumed. In this case, all instances of get_irc_server/1 will be retracted,
 %  and the new server will be asserted for use.
+%
+%  @arg Msg A server line parsed into a compound term for IRC message consumption
 
 process_server(Me, Msg) :-
   timer(Me, T),
@@ -176,6 +188,12 @@ process_server(Me, Msg) :-
 %  directive in the user's program; however, there are plenty of cases where
 %  it's acceptable to call this as a normal goal during runtime.
 %
+%  @arg Id The identity or alias of the connection; this should match the alias
+%  of the thread started to initiate the connection via connect/6
+%  @arg Handlers A list of goals that are made available to irc_client. All
+%  goals should have an arity of 1, and deal with processing an Id-Msg pair that
+%  an IRC server relays to the client
+%
 %  @throws instantiation_error if Id is not ground
 
 assert_handlers(Id, Handlers) :-
@@ -194,10 +212,11 @@ process_msg(Msg, Goal) :-
 %--------------------------------------------------------------------------------%
 
 
-%% disconnect is semidet.
+%% disconnect(+Id) is semidet.
 %
-%  Clean up top level information access structures, issue a disconnect command
-%  to the irc server, close the socket stream pair, and attempt to reconnect.
+%  Issue a disconnect (quit) command, and clean up all unneeded information from
+%  the top level. This process will only be handled for the connection that
+%  contains the alias Id.
 
 disconnect(Me) :-
   catch(send_msg(Me, quit), _E0, true),
@@ -217,9 +236,9 @@ disconnect(Me) :-
   ).
 
 
-%% info_cleanup is det.
+%% info_cleanup(+Id) is det.
 %
-%  Retract all obsolete facts from info module.
+%  Retract all obsolete facts from info module, under the connection alias Id.
 info_cleanup(Me) :-
   maplist(retractall,
     [ connection(Me,_,_,_,_,_,_)
@@ -236,7 +255,7 @@ info_cleanup(Me) :-
 %--------------------------------------------------------------------------------%
 
 
-%% init_timer(-Id:atom) is semidet.
+%% init_timer(-Id) is semidet.
 %
 %  Initialize a message queue that stores one thread which acts as a timer that
 %  checks connectivity of the client when established interval has passed.
@@ -250,7 +269,7 @@ init_timer(Id) :-
   thread_create(check_pings(Id), _, [alias(Checker)]).
 
 
-%% check_pings(+Id:atom) is failure.
+%% check_pings(+Id) is failure.
 %
 %  If Limit seconds has passed, then signal the connection thread to abort. If a
 %  ping has been detected and the corresponding message is sent before the time

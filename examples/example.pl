@@ -49,7 +49,7 @@ run :-
   % Here we create two threads that attempt to connect to the same server
   % the alias of each thread represents the connection Id. One can conceivably
   % connect to many servers each with many channels, under different user names.
-  % We mearly attach the threads to separate consoles for demonstrative purposes.
+  % We merely attach the threads to separate consoles for demonstrative purposes.
   % (attaching to a debug console is not required)
   thread_create(connect, Connect, [detached(true),alias(ct1)]),
   thread_signal(Connect, attach_console),

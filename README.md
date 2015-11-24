@@ -28,7 +28,7 @@ this library can be found at: https://github.com/eazar001/yesbot
 ?- priv_msg(freenode, "hello world", "##prolog").
 
 % sends a message to the user "nick02" with "hello" and "world", each
-% on seperate lines, on the connection with the alias, "efnet".
+% on separate lines, on the connection with the alias, "efnet".
 ?- priv_msg(efnet, "hello\nworld", "nick02").
 
 % sends an invitation to ##math, for freenode user, "user001"

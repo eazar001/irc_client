@@ -44,23 +44,41 @@ run_det(Goal) :-
       ,encoding(encoding) ]).
 
 
-%% priv_message(+Text:string, +Recipient:string) is det.
+%% priv_message(+Id, +Text, +Recipient) is det.
 %
 %  This is a convenience predicate for sending private messages to recipients on
 %  IRC channels. If there are any newlines they will be converted into individual
-%  messages (i.e. paragraph style handling).
+%  messages (i.e. paragraph style handling). If the user is attempting to send
+%  a message longer than the limit they can send on one line, the message will
+%  be automatically segmented into multiple messages. The message will be
+%  delivered on the connection alias Id.
 
 priv_msg(Id, Text, Recipient) :-
   priv_msg_rest(Id, Text, Recipient, _, [auto_nl(true)]).
 
 
+%% priv_msg(+Id, +Text, +Recipient, :Options) is det.
+%
+%  Like priv_msg/3 except with explicit options.
+%
+%  @arg Options includes: =|auto_nl(Boolean)|=, where Boolean is true or false;
+%  =|at_most(N)|=, where N is the maximum amount of lines to print.
+
 priv_msg(Id, Text, Recipient, Options) :-
   priv_msg_rest(Id, Text, Recipient, _, Options).
 
 
+%% priv_msg_rest(+Id, +Text, +Recipient, -Rest) is det.
+%
+%  Same as priv_msg/3, except Rest is the remaineder of a message.
 priv_msg_rest(Id, Text, Recipient, Rest) :-
   priv_msg_rest(Id, Text, Recipient, Rest, [auto_nl(true)]).
 
+
+%% priv_msg_rest(+Id, +Text, +Recipient, -Rest, :Options) is det.
+%
+%  Same as priv_msg/3, except Rest is unified with the remainder of a message
+%  after printing out at most, N amount of lines specified by the user.
 
 priv_msg_rest(Id, Text, Recipient, Rest, Options) :-
   Send_msg = (\Msg^send_msg(Id, priv_msg, Msg, Recipient)),
@@ -79,6 +97,13 @@ priv_msg_rest(Id, Text, Recipient, Rest, Options) :-
   ;  set_stream(Stream, encoding(utf8))
   ).
 
+
+%% priv_msg_paragraph(+Id, +Text, +Recipient, -Paragraph) is det.
+%
+%  True if Paragraph is a string list that represents a string formatted to write
+%  an entire IRC message, filtering carriage returns and empty strings. The
+%  string will be split into lists of strings that represent individually
+%  segmented lines.
 
 priv_msg_paragraph(Id, Text, Recipient, Paragraph) :-
   min_msg_len(Id, Min),

@@ -24,19 +24,6 @@ message through the stream.
 %--------------------------------------------------------------------------------%
 
 
-%% return_server(-Server:string) is det.
-%
-%  If the server is known get the value from the core. If not, then the server is
-%  'unknown'.
-
-return_server(Server) :-
-  thread_self(Me),
-  (  known(Me,irc_server)
-  -> get_irc_server(Me, Server)
-  ;  Server = unknown
-  ).
-
-
 %% cmd_params(+Type, -N) is semidet.
 %
 %  True if N is the number of paramteres in Type's template.
