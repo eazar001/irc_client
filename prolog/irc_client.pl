@@ -281,10 +281,10 @@ init_timer(Id) :-
   atom_concat(Me, '_ping_checker', Checker),
   asserta(info:timer(Me,Timer)),
   message_queue_create(Id, [alias(Timer)]),
-  thread_create(check_pings(Id), _, [alias(Checker)]).
+  thread_create(check_pings(Me, Id), _, [alias(Checker)]).
 
 
-%% check_pings(+Id) is failure.
+%% check_pings(+ParentId, +Id) is failure.
 %
 %  If Limit seconds has passed, then signal the connection thread to abort. If a
 %  ping has been detected and the corresponding message is sent before the time
@@ -292,11 +292,12 @@ init_timer(Id) :-
 %  predicate. The thread will then return to its queue, reset its timer, and wait
 %  for another ping signal.
 
-check_pings(Id) :-
+check_pings(Me, Id) :-
+  Abort = thread_signal(Me, throw(abort)),
   repeat,
-    (  thread_get_message(Id, Goal, [timeout(300)])
-    -> Goal
-    ;  throw(abort)
+    (  catch(thread_get_message(Id, Goal, [timeout(300)]), _Exn, Abort)
+    -> call(Goal)
+    ;  call(Abort)
     ),
     fail.
 
