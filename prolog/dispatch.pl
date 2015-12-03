@@ -41,9 +41,7 @@ send_msg(Me, Type) :-
   get_irc_stream(Me, Stream),
   cmd_params(Type, 0), !, % green, no further matches
   write(Stream, Msg),
-  flush_output(Stream),
-  timer(Me, T),
-  thread_send_message(T, true).
+  flush_output(Stream).
 
 % This clause will deal with deal with message types that are possibly
 % timer-independent
@@ -60,12 +58,7 @@ send_msg(Me, Type) :-
   ;  Type = join,
      maplist(format(Stream, Msg), Chans)
   ),
-  flush_output(Stream),
-  (  known(Me, tq)
-  -> timer(Me, T),
-     thread_send_message(T, true)
-  ;  true
-  ).
+  flush_output(Stream).
 
 
 %% send_msg(+Id, +Type, +Param) is semidet.
@@ -76,9 +69,7 @@ send_msg(Me, Type, Param) :-
   cmd_params(Type, 1), !, % green, no further matches
   get_irc_stream(Me, Stream),
   format(Stream, Msg, [Param]),
-  flush_output(Stream),
-  timer(Me, T),
-  thread_send_message(T, true).
+  flush_output(Stream).
 
 
 %% send_msg(+Id, +Type, +Str, +Target) is semidet.
@@ -91,9 +82,7 @@ send_msg(Me, Type, Str, Target) :-
   \+member(Type, [kick, invite]), !, % green, no further matches
   get_irc_stream(Me, Stream),
   format(Stream, Msg, [Target, Str]),
-  flush_output(Stream),
-  timer(Me, T),
-  thread_send_message(T, true).
+  flush_output(Stream).
 
 % Send a message of Type with respect to Chan, to the Target.
 send_msg(Me, Type, Chan, Target) :-
@@ -104,7 +93,4 @@ send_msg(Me, Type, Chan, Target) :-
   ;  Type = invite,
      format(Stream, Msg, [Target, Chan])
   ), !,
-  flush_output(Stream),
-  timer(Me, T),
-  thread_send_message(T, true).
-
+  flush_output(Stream).
