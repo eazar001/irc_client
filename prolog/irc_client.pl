@@ -1,4 +1,3 @@
-
 :- module(irc_client,
      [ assert_handlers/2
       ,connect/6

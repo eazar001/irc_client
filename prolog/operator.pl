@@ -1,10 +1,11 @@
+:- module(operator,
+     [ cmd/2
+      ,dbg/2 ]).
 
-%% Operator module that determines appropriate messaging templates for specific
-%% atoms which connote particular irc operations.
-
-
-:- module(operator, [ cmd/2
-		     ,dbg/2 ]).
+/** <module> operator
+Operator module that determines appropriate messaging templates for specific
+atoms which connote particular irc operations.
+*/
 
 
 %--------------------------------------------------------------------------------%
@@ -169,5 +170,3 @@ cmd(quit, 'QUIT :disconnect\r\n').
 
 % PONG [Origin]
 dbg(pong, 'PONG ~s~n').
-
-
