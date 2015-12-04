@@ -1,4 +1,3 @@
-
 :- module(irc_client,
      [ assert_handlers/2
       ,connect/6
@@ -45,7 +44,6 @@ information sets are maintained here.
 @tbd Link more commands from operator.pl to dispatch.pl
 @tbd More documentation of pack useage is needed, perhaps even wiki
 @tbd Add direct support for CTCP actions
-
 */
 
 
@@ -74,6 +72,7 @@ connect(Host, Port, Pass, Nick, Names, Chans) :-
        init_structs(Pass, Nick, Names, Chans),
        tcp_socket(Socket),
        tcp_connect(Socket, Host:Port, Stream),
+       set_stream(Stream, timeout(300)),
        stream_pair(Stream, _Read, Write),
        asserta(info:get_irc_write_stream(Me, Write)),
        set_stream(Write, encoding(utf8)),
@@ -124,8 +123,6 @@ init_structs(P_, N_, Names, Chans_) :-
 read_server_loop(Reply) :-
   thread_self(Me),
   get_irc_stream(Me, Stream),
-  init_timer(_TQ),
-  asserta(info:known(Me, tq)),
   repeat,
     read_server(Reply, Stream), !.
 
@@ -168,8 +165,6 @@ read_server_handle(Reply) :-
 %  @arg Msg A server line parsed into a compound term for IRC message consumption
 
 process_server(Me, Msg) :-
-  timer(Me, T),
-  thread_send_message(T, true),
   (  % Handle pings
      Msg = msg("PING", [], O),
      string_codes(Origin, O),
@@ -184,12 +179,28 @@ process_server(Me, Msg) :-
      send_msg(Me, who, atom_string $ Nick)
   ;  % Get own host and nick info
      Msg = msg(_Server, "352", Params, _),
-     connection(Me,N,_,_,_,_,_),
-     atom_string(N, Nick),
-     Params = [_Asker, _Chan, H, Host, _, Nick| _],
-     % Calculate the minimum length for a private message and assert info
-     format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-     asserta(info:min_msg_len(Me, string_length $ Template))
+     (  min_msg_len(Me, _)
+     -> true
+     ;  connection(Me,N,_,_,_,_,_),
+	atom_string(N, Nick),
+	Params = [_Asker, _Chan, H, Host, _, Nick| _],
+        % Calculate the minimum length for a private message and assert info
+	format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
+	asserta(info:min_msg_len(Me, string_length $ Template)),
+	catch(
+          thread_create(
+            (  repeat,
+	       send_msg(irc, ping, Nick),
+	       sleep(180),
+	       fail
+	    ),
+            _Status,
+            [detached(true), alias(checker)]
+          ),
+          _Any,
+          true
+        )
+     )
   ;  handle_server(Me, Goals),
      Goals \= [],
      maplist(process_msg(Me-Msg), Goals)
@@ -235,16 +246,9 @@ process_msg(Msg, Goal) :-
 
 disconnect(Me) :-
   catch(send_msg(Me, quit), _E0, true),
-  atom_concat(Me, '_ping_checker', Ping),
+  catch(thread_signal(checker, throw(abort)), _E1, true),
   info_cleanup(Me),
-  catch(thread_signal(Ping, throw(abort)), _E1, true),
-  catch(thread_join(Ping, _Status), _E2, true),
   retractall(get_irc_stream(Me,Stream)),
-  retractall(timer(Me,Q)),
-  (  message_queue_property(Q, alias(_))
-  -> message_queue_destroy(Q)
-  ;  true
-  ),
   (  catch(stream_property(Stream, _), _Error, fail)
   -> close(Stream)
   ;  true
@@ -263,41 +267,3 @@ info_cleanup(Me) :-
      ,get_irc_server(Me,_)
      ,get_irc_write_stream(Me,_)
      ,known(Me,_) ]).
-
-
-%--------------------------------------------------------------------------------%
-% Connectivity/Timing/Handling
-%--------------------------------------------------------------------------------%
-
-
-%% init_timer(-Id) is semidet.
-%
-%  Initialize a message queue that stores one thread which acts as a timer that
-%  checks connectivity of the client when established interval has passed.
-
-init_timer(Id) :-
-  thread_self(Me),
-  atom_concat(Me, '_tq', Timer),
-  atom_concat(Me, '_ping_checker', Checker),
-  asserta(info:timer(Me,Timer)),
-  message_queue_create(Id, [alias(Timer)]),
-  thread_create(check_pings(Me, Id), _, [alias(Checker)]).
-
-
-%% check_pings(+ParentId, +Id) is failure.
-%
-%  If Limit seconds has passed, then signal the connection thread to abort. If a
-%  ping has been detected and the corresponding message is sent before the time
-%  limit expires, then the goal will succeed and so will the rest of the
-%  predicate. The thread will then return to its queue, reset its timer, and wait
-%  for another ping signal.
-
-check_pings(Me, Id) :-
-  Abort = thread_signal(Me, throw(abort)),
-  repeat,
-    (  catch(thread_get_message(Id, Goal, [timeout(300)]), _Exn, Abort)
-    -> call(Goal)
-    ;  call(Abort)
-    ),
-    fail.
-
