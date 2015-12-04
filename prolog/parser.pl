@@ -1,8 +1,3 @@
-
-%% Parsing module
-
-
-
 :- module(parser,
      [ parse_line/2
       ,prefix_id/2
@@ -145,5 +140,3 @@ split_from_trailer(Line, Out) :-
 split([]) --> ` :`.
 split([M|Main]) -->
   [M], split(Main).
-
-

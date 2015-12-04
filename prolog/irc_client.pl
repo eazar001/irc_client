@@ -1,4 +1,3 @@
-
 :- module(irc_client,
      [ assert_handlers/2
       ,connect/6
@@ -180,12 +179,28 @@ process_server(Me, Msg) :-
      send_msg(Me, who, atom_string $ Nick)
   ;  % Get own host and nick info
      Msg = msg(_Server, "352", Params, _),
-     connection(Me,N,_,_,_,_,_),
-     atom_string(N, Nick),
-     Params = [_Asker, _Chan, H, Host, _, Nick| _],
-     % Calculate the minimum length for a private message and assert info
-     format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-     asserta(info:min_msg_len(Me, string_length $ Template))
+     (  min_msg_len(Me, _)
+     -> true
+     ;  connection(Me,N,_,_,_,_,_),
+	atom_string(N, Nick),
+	Params = [_Asker, _Chan, H, Host, _, Nick| _],
+        % Calculate the minimum length for a private message and assert info
+	format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
+	asserta(info:min_msg_len(Me, string_length $ Template)),
+	catch(
+          thread_create(
+            (  repeat,
+	       send_msg(irc, ping, Nick),
+	       sleep(180),
+	       fail
+	    ),
+            _Status,
+            [detached(true), alias(checker)]
+          ),
+          _Any,
+          true
+        )
+     )
   ;  handle_server(Me, Goals),
      Goals \= [],
      maplist(process_msg(Me-Msg), Goals)
@@ -231,6 +246,7 @@ process_msg(Msg, Goal) :-
 
 disconnect(Me) :-
   catch(send_msg(Me, quit), _E0, true),
+  catch(thread_signal(checker, throw(abort)), _E1, true),
   info_cleanup(Me),
   retractall(get_irc_stream(Me,Stream)),
   (  catch(stream_property(Stream, _), _Error, fail)

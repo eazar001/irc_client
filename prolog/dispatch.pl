@@ -1,4 +1,3 @@
-
 :- module(dispatch,
      [ send_msg/2
       ,send_msg/3

@@ -1,4 +1,3 @@
-
 :- module(info,
      [ known/2
       ,get_irc_stream/2
