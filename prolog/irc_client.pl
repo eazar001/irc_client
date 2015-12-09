@@ -182,18 +182,18 @@ process_server(Me, Msg) :-
      (  min_msg_len(Me, _)
      -> true
      ;  connection(Me,N,_,_,_,_,_),
-	atom_string(N, Nick),
-	Params = [_Asker, _Chan, H, Host, _, Nick| _],
+        atom_string(N, Nick),
+        Params = [_Asker, _Chan, H, Host, _, Nick| _],
         % Calculate the minimum length for a private message and assert info
-	format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-	asserta(info:min_msg_len(Me, string_length $ Template)),
-	catch(
+        format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
+        asserta(info:min_msg_len(Me, string_length $ Template)),
+        catch(
           thread_create(
             (  repeat,
-	       send_msg(irc, ping, Nick),
-	       sleep(180),
-	       fail
-	    ),
+               send_msg(irc, ping, Nick),
+               sleep(180),
+               fail
+            ),
             _Status,
             [detached(true), alias(checker)]
           ),
