@@ -145,7 +145,7 @@ read_server(Reply, Stream) :-
 %% read_server_handle(+Reply) is det.
 %
 %  Process the current line relayed by the IRC server via the user's asserted
-%  handlers (if any). Other essential non-user related actions are called 
+%  handlers (if any). Other essential non-user related actions are called
 %  from this point as well.
 
 read_server_handle(Reply) :-
