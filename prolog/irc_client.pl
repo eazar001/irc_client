@@ -1,7 +1,8 @@
-:- module(irc_client,
-     [ assert_handlers/2
-      ,connect/6
-      ,disconnect/1 ]).
+:- module(irc_client, [
+	assert_handlers/2,
+	connect/6,
+	disconnect/1
+]).
 
 
 :- use_module(library(socket)).
@@ -12,25 +13,28 @@
 
 :- use_module(parser).
 
-:- reexport(parser,
-     [ prefix_id/2
-      ,prefix_id/4 ]).
+:- reexport(parser, [
+	prefix_id/2,
+	prefix_id/4
+]).
 
 :- use_module(dispatch).
 
-:- reexport(dispatch,
-     [ send_msg/2
-      ,send_msg/3
-      ,send_msg/4 ]).
+:- reexport(dispatch, [
+	send_msg/2,
+	send_msg/3,
+	send_msg/4
+]).
 
 :- use_module(utilities).
 
-:- reexport(utilities,
-     [ priv_msg/3
-      ,priv_msg/4
-      ,priv_msg_rest/4
-      ,priv_msg_rest/5
-      ,priv_msg_paragraph/4 ]).
+:- reexport(utilities, [
+	priv_msg/3,
+	priv_msg/4,
+	priv_msg_rest/4,
+	priv_msg_rest/5,
+	priv_msg_paragraph/4
+]).
 
 
 /** <module> irc_client main interface
@@ -66,31 +70,31 @@ information sets are maintained here.
 %  @arg Chans A list of atoms, each atom representing a channel to connect to
 
 connect(Host, Port, Pass, Nick, Names, Chans) :-
-  setup_call_cleanup(
-    (  thread_self(Me),
-       asserta(info:c_specs(Me,Host,Port,Pass,Nick,Names,Chans)),
-       init_structs(Pass, Nick, Names, Chans),
-       tcp_socket(Socket),
-       tcp_connect(Socket, Host:Port, Stream),
-       set_stream(Stream, timeout(300)),
-       stream_pair(Stream, _Read, Write),
-       asserta(info:get_irc_write_stream(Me, Write)),
-       set_stream(Write, encoding(utf8)),
-       asserta(info:get_irc_stream(Me, Stream))
-    ),
-    (  register_and_join,
-       read_server_loop(_Reply)
-    ),
-    disconnect(Me)
-  ).
+	setup_call_cleanup(
+		(	thread_self(Me),
+			asserta(info:c_specs(Me,Host,Port,Pass,Nick,Names,Chans)),
+			init_structs(Pass, Nick, Names, Chans),
+			tcp_socket(Socket),
+			tcp_connect(Socket, Host:Port, Stream),
+			set_stream(Stream, timeout(300)),
+			stream_pair(Stream, _Read, Write),
+			asserta(info:get_irc_write_stream(Me, Write)),
+			set_stream(Write, encoding(utf8)),
+			asserta(info:get_irc_stream(Me, Stream))
+		),
+		(	register_and_join,
+			read_server_loop(_Reply)
+		),
+		disconnect(Me)
+	).
 
 
 %% register_and_join is semidet.
 %
 %  Present credentials and register user on the irc server.
 register_and_join :-
-  thread_self(Me),
-  maplist(send_msg(Me), [pass, user, nick, join]).
+	thread_self(Me),
+	maplist(send_msg(Me), [pass, user, nick, join]).
 
 
 %% init_structs is det.
@@ -99,13 +103,13 @@ register_and_join :-
 %  user information is available at the top level throughout the program.
 
 init_structs(P_, N_, Names, Chans_) :-
-  thread_self(Me),
-  Names = [Hn_, Sn_, Rn_],
-  maplist(atom_string, Chans_, Chans),
-  maplist(atom_string, [N_, P_, Hn_, Sn_, Rn_], Strs),
-  Strs = [N, P, Hn, Sn, Rn],
-  Connection =.. [connection, Me, N, P, Chans, Hn, Sn, Rn],
-  asserta(info:Connection).
+	thread_self(Me),
+	Names = [Hn_, Sn_, Rn_],
+	maplist(atom_string, Chans_, Chans),
+	maplist(atom_string, [N_, P_, Hn_, Sn_, Rn_], Strs),
+	Strs = [N, P, Hn, Sn, Rn],
+	Connection =.. [connection, Me, N, P, Chans, Hn, Sn, Rn],
+	asserta(info:Connection).
 
 
 %--------------------------------------------------------------------------------%
@@ -121,10 +125,11 @@ init_structs(P_, N_, Names, Chans_) :-
 %  of codes that represents one line of a relayed IRC server message.
 
 read_server_loop(Reply) :-
-  thread_self(Me),
-  get_irc_stream(Me, Stream),
-  repeat,
-    read_server(Reply, Stream), !.
+	thread_self(Me),
+	get_irc_stream(Me, Stream),
+	repeat,
+		read_server(Reply, Stream),
+		!.
 
 
 %% read_server(-Reply, +Stream) is nondet.
@@ -134,12 +139,12 @@ read_server_loop(Reply) :-
 %  contents of the server message and process the reply.
 
 read_server(Reply, Stream) :-
-  read_line_to_codes(Stream, Reply),
-  (  Reply = end_of_file
-  -> true
-  ;  read_server_handle(Reply),
-     fail
-  ).
+	read_line_to_codes(Stream, Reply),
+	(	Reply = end_of_file
+	->	true
+	;	read_server_handle(Reply),
+		fail
+	).
 
 
 %% read_server_handle(+Reply) is det.
@@ -149,9 +154,9 @@ read_server(Reply, Stream) :-
 %  from this point as well.
 
 read_server_handle(Reply) :-
-  thread_self(Me),
-  parse_line(Reply, Msg),
-  thread_create(run_det(process_server(Me, Msg)), _Id, [detached(true)]).
+	thread_self(Me),
+	parse_line(Reply, Msg),
+	thread_create(run_det(process_server(Me, Msg)), _Id, [detached(true)]).
 
 
 %% process_server(+Me, +Msg) is nondet.
@@ -165,46 +170,46 @@ read_server_handle(Reply) :-
 %  @arg Msg A server line parsed into a compound term for IRC message consumption
 
 process_server(Me, Msg) :-
-  (  % Handle pings
-     Msg = msg("PING", [], O),
-     string_codes(Origin, O),
-     send_msg(Me, pong, Origin)
-  ;  % Get irc server and assert info
-     Msg = msg(Server, "001", _, _),
-     retractall(get_irc_server(Me,_)),
-     asserta(info:get_irc_server(Me,Server)),
-     asserta(info:known(Me,irc_server)),
-     % Request own user info
-     connection(Me,Nick,_,_,_,_,_),
-     send_msg(Me, who, atom_string $ Nick)
-  ;  % Get own host and nick info
-     Msg = msg(_Server, "352", Params, _),
-     (  min_msg_len(Me, _)
-     -> true
-     ;  connection(Me,N,_,_,_,_,_),
-        atom_string(N, Nick),
-        Params = [_Asker, _Chan, H, Host, _, Nick| _],
-        % Calculate the minimum length for a private message and assert info
-        format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-        asserta(info:min_msg_len(Me, string_length $ Template)),
-        catch(
-          thread_create(
-            (  repeat,
-               send_msg(irc, ping, Nick),
-               sleep(180),
-               fail
-            ),
-            _Status,
-            [detached(true), alias(checker)]
-          ),
-          _Any,
-          true
-        )
-     )
-  ;  handle_server(Me, Goals),
-     Goals \= [],
-     maplist(process_msg(Me-Msg), Goals)
-  ).
+	(	% Handle pings
+		Msg = msg("PING", [], O),
+		string_codes(Origin, O),
+		send_msg(Me, pong, Origin)
+	;	% Get irc server and assert info
+		Msg = msg(Server, "001", _, _),
+		retractall(get_irc_server(Me,_)),
+		asserta(info:get_irc_server(Me,Server)),
+		asserta(info:known(Me,irc_server)),
+		% Request own user info
+		connection(Me,Nick,_,_,_,_,_),
+		send_msg(Me, who, atom_string $ Nick)
+	;	% Get own host and nick info
+		Msg = msg(_Server, "352", Params, _),
+		(	min_msg_len(Me, _)
+		->	true
+		;	connection(Me,N,_,_,_,_,_),
+			atom_string(N, Nick),
+			Params = [_Asker, _Chan, H, Host, _, Nick| _],
+			% Calculate the minimum length for a private message and assert info
+			format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
+			asserta(info:min_msg_len(Me, string_length $ Template)),
+			catch(
+				thread_create(
+					(	repeat,
+						send_msg(irc, ping, Nick),
+						sleep(180),
+						fail
+					),
+					_Status,
+					[detached(true), alias(checker)]
+				),
+				_Any,
+				true
+			)
+		)
+	;	handle_server(Me, Goals),
+		Goals \= [],
+		maplist(process_msg(Me-Msg), Goals)
+	).
 
 
 %% assert_handlers(+Id, +Handlers) is det.
@@ -223,14 +228,14 @@ process_server(Me, Msg) :-
 %  @throws instantiation_error if Id is not ground
 
 assert_handlers(Id, Handlers) :-
-  must_be(ground, Id),
-  retractall(handle_server(Id,_)),
-  asserta(info:handle_server(Id, Handlers)).
+	must_be(ground, Id),
+	retractall(handle_server(Id,_)),
+	asserta(info:handle_server(Id, Handlers)).
 
 
 :- meta_predicate process_msg(+, 1).
 process_msg(Msg, Goal) :-
-  call(Goal, Msg).
+	call(Goal, Msg).
 
 
 %--------------------------------------------------------------------------------%
@@ -245,25 +250,29 @@ process_msg(Msg, Goal) :-
 %  contains the alias Id.
 
 disconnect(Me) :-
-  catch(send_msg(Me, quit), _E0, true),
-  catch(thread_signal(checker, throw(abort)), _E1, true),
-  info_cleanup(Me),
-  retractall(get_irc_stream(Me,Stream)),
-  (  catch(stream_property(Stream, _), _Error, fail)
-  -> close(Stream)
-  ;  true
-  ).
+	catch(send_msg(Me, quit), _E0, true),
+	catch(thread_signal(checker, throw(abort)), _E1, true),
+	info_cleanup(Me),
+	retractall(get_irc_stream(Me,Stream)),
+	(	catch(stream_property(Stream, _), _Error, fail)
+	->	close(Stream)
+	;	true
+	).
 
 
 %% info_cleanup(+Id) is det.
 %
 %  Retract all obsolete facts from info module, under the connection alias Id.
 info_cleanup(Me) :-
-  maplist(retractall,
-    [ connection(Me,_,_,_,_,_,_)
-     ,c_specs(Me,_,_,_,_,_)
-     ,min_msg_len(Me,_)
-     ,handle_server(Me,_)
-     ,get_irc_server(Me,_)
-     ,get_irc_write_stream(Me,_)
-     ,known(Me,_) ]).
+	maplist(
+		retractall,
+		[
+			connection(Me,_,_,_,_,_,_),
+			c_specs(Me,_,_,_,_,_),
+			min_msg_len(Me,_),
+			handle_server(Me,_),
+			get_irc_server(Me,_),
+			get_irc_write_stream(Me,_),
+			known(Me,_)
+		]
+	).

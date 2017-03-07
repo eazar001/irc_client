@@ -1,12 +1,13 @@
-:- module(info,
-     [ known/2
-      ,get_irc_stream/2
-      ,get_irc_write_stream/2
-      ,get_irc_server/2
-      ,handle_server/2
-      ,connection/7
-      ,min_msg_len/2
-      ,c_specs/6 ]).
+:- module(info, [
+	known/2,
+	get_irc_stream/2,
+	get_irc_write_stream/2,
+	get_irc_server/2,
+	handle_server/2,
+	connection/7,
+	min_msg_len/2,
+	c_specs/6
+]).
 
 :- dynamic known/2.
 :- dynamic get_irc_stream/2.

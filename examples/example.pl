@@ -29,33 +29,33 @@
 % has been established when it reaches IRC message code 352.
 
 output(Id-Msg) :-
-  % This is the basic format of an incoming server message. It is a compound
-  % term of the format: msg(Server, Code, Params, Text), or in other words,
-  % msg(string, string, list(string), string)
-  % The third argument is a variable list of strings that represent specific
-  % IRC parameters
-  Msg = msg(Server, Code, Params, Text),
-  format("~s: ~s ~s ~w ~s~n", [Id, Server, Code, Params, Text]).
+	% This is the basic format of an incoming server message. It is a compound
+	% term of the format: msg(Server, Code, Params, Text), or in other words,
+	% msg(string, string, list(string), string)
+	% The third argument is a variable list of strings that represent specific
+	% IRC parameters
+	Msg = msg(Server, Code, Params, Text),
+	format("~s: ~s ~s ~w ~s~n", [Id, Server, Code, Params, Text]).
 
 echo_connected(Id-Msg) :-
-  % Every incoming message relayed by the server takes the form of a pair ...
-  % Id-Msg. The Id is the aliased Id of the connection when the thread for it
-  % is created. The Msg part of the pair is the actual message itself.
-  Msg = msg(Server, "352", _, _),
-  format("Successfully connected to ~s on ~s~n", [Server,Id]).
+	% Every incoming message relayed by the server takes the form of a pair ...
+	% Id-Msg. The Id is the aliased Id of the connection when the thread for it
+	% is created. The Msg part of the pair is the actual message itself.
+	Msg = msg(Server, "352", _, _),
+	format("Successfully connected to ~s on ~s~n", [Server,Id]).
 
 
 run :-
-  % Here we create two threads that attempt to connect to the same server
-  % the alias of each thread represents the connection Id. One can conceivably
-  % connect to many servers each with many channels, under different user names.
-  % We merely attach the threads to separate consoles for demonstrative purposes.
-  % (attaching to a debug console is not required)
-  thread_create(connect, Connect, [detached(true),alias(ct1)]),
-  thread_signal(Connect, attach_console),
-  sleep(0.1),
-  thread_create(connect_2, Connect2, [detached(true),alias(ct2)]),
-  thread_signal(Connect2, attach_console).
+	% Here we create two threads that attempt to connect to the same server
+	% the alias of each thread represents the connection Id. One can conceivably
+	% connect to many servers each with many channels, under different user names.
+	% We merely attach the threads to separate consoles for demonstrative purposes.
+	% (attaching to a debug console is not required)
+	thread_create(connect, Connect, [detached(true),alias(ct1)]),
+	thread_signal(Connect, attach_console),
+	sleep(0.1),
+	thread_create(connect_2, Connect2, [detached(true),alias(ct2)]),
+	thread_signal(Connect2, attach_console).
 
 % Each connection uses the connect/6 predicate.
 % connect(IRC Server, port, password, username, names, channels) or in other
@@ -67,10 +67,10 @@ run :-
 % software. For more information on the protocol API, see the README.
 
 connect :-
-  connect('chat.freenode.net', 6667, pass, userbot, [host,server,real], ['##prolog','#coq']).
+	connect('chat.freenode.net', 6667, pass, userbot, [host,server,real], ['##prolog','#coq']).
 
 connect_2 :-
-  connect('chat.freenode.net', 6667, pass, userbot2, [host,server,real], ['#math']).
+	connect('chat.freenode.net', 6667, pass, userbot2, [host,server,real], ['#math']).
 
 connect_3 :-
-  connect('irc.choopa.net', 6667, pass, userbot3, [host,server,real], ['#iphone']).
+	connect('irc.choopa.net', 6667, pass, userbot3, [host,server,real], ['#iphone']).

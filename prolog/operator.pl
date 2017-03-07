@@ -1,6 +1,7 @@
-:- module(operator,
-     [ cmd/2
-      ,dbg/2 ]).
+:- module(operator, [
+	cmd/2,
+	dbg/2
+]).
 
 /** <module> operator
 Operator module that determines appropriate messaging templates for specific
