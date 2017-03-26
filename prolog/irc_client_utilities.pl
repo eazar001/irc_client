@@ -17,17 +17,6 @@
 :- use_module(library(list_util)).
 
 
-%--------------------------------------------------------------------------------%
-% Concurrency
-%--------------------------------------------------------------------------------%
-
-
-%% run_det(:Goal) is det.
-%
-%  Find all the solutions to a goal in order to precipitate the result as a
-%  deterministic result. Used here for deterministically evaluating a possibly
-%  nondet concurrently.
-
 :- meta_predicate run_det(0).
 run_det(Goal) :-
 	ignore((Goal, fail)).

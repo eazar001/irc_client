@@ -24,15 +24,6 @@ message through the stream.
 %--------------------------------------------------------------------------------%
 
 
-%% cmd_params(+Type, -N) is semidet.
-%
-%  True if N is the number of parameters in Type's template.
-cmd_params(Type, N) :-
-	cmd(Type, Template),
-	split_string(Template, "~", "\r~n", [_|Params]),
-	length(Params, N).
-
-
 %% send_msg(+Id, +Type) is semidet.
 %
 %  Send a Type of message from connection Id.
@@ -96,3 +87,8 @@ send_msg(Me, Type, Chan, Target) :-
 	),
 	!,
 	flush_output(Stream).
+
+cmd_params(Type, N) :-
+	cmd(Type, Template),
+	split_string(Template, "~", "\r~n", [_|Params]),
+	length(Params, N).

@@ -43,16 +43,6 @@ crlf =	%x0D %x0A	; Carriage return/linefeed.
 
 */
 
-
-%% parse_line(+Line, -Msg) is semidet.
-%
-%  After splitting the line from any potential trailing parameters, format
-%  the line in a message compound term for proper reading outside of this
-%  module.
-%
-%  @arg Line A list of codes representing a line of a relayed message
-%  @arg Msg A compound term representation of Line
-
 parse_line(Line, Msg) :-
 	split_from_trailer(Line, Out),
 	once(fmt_line(Out, Msg)).
@@ -80,11 +70,9 @@ prefix_id(Prefix, Nick, User, Host) :-
 	split_string(Rest, "@", "", [User|[Host]]).
 
 
-%--------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------------------------------%
 
 
-%% fmt_line(+Line, -Msg) is semidet.
-%
 %  Split a server message into (potentially) 3 parts. The message can be split
 %  into a prefix, command, and some command parameters. However, the prefix
 %  is optional and the parameter list can potentially be empty.
@@ -112,8 +100,6 @@ fmt_line([Main], msg(Cmd, Params)) :-
 	split_string(Main, " ", "", [Cmd|Params]).
 
 
-%% split_from_trailer(+Line, -Out) is det.
-%
 %  Split the main portion of the message from the trailer portion of the message
 %  if a trailer does exist. These are the possibilities when operating
 %  under the current IRC protocol:
