@@ -182,19 +182,17 @@ process_server(Me, msg(Server, "001", _, _)) :-
 	send_msg(Me, who, atom_string $ Nick).
 process_server(Me, msg(_Server, "352", Params, _)) :-
 	% get own host and nick info
-	(	min_msg_len(Me, _)
-	->	true
-	;	connection(Me, N, _, _, _, _, _),
-		atom_string(N, Nick),
-		Params = [_Asker, _Chan, H, Host, _, Nick|_],
-		% calculate the minimum length for a private message and assert info
-		format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-		assert_min_msg_len(Me, string_length $ Template),
-		catch(
-			thread_create(ping_loop(Nick, 180), _Status, [detached(true), alias(checker)]),
-			_Any,
-			true
-		)
+	\+ min_msg_len(Me, _),
+	connection(Me, N, _, _, _, _, _),
+	atom_string(N, Nick),
+	Params = [_Asker, _Chan, H, Host, _, Nick|_],
+	% calculate the minimum length for a private message and assert info
+	format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
+	assert_min_msg_len(Me, string_length $ Template),
+	catch(
+		thread_create(ping_loop(Nick, 180), _Status, [detached(true), alias(checker)]),
+		_Any,
+		true
 	).
 process_server(Me, Msg) :-
 	% run user's custom goals
