@@ -63,22 +63,33 @@ information sets are maintained here.
 
 connect(Host, Port, Pass, Nick, Names, Chans) :-
 	setup_call_cleanup(
-		(	thread_self(Me),
-			init_structs(Pass, Nick, Names, Chans),
-			tcp_socket(Socket),
-			tcp_connect(Socket, Host:Port, Stream),
-			set_stream(Stream, timeout(300)),
-			stream_pair(Stream, _Read, Write),
-			assert_irc_write_stream(Me, Write),
-			set_stream(Write, encoding(utf8)),
-			assert_irc_stream(Me, Stream)
-		),
-		(	register_and_join,
-			read_server_loop(_Reply)
-		),
+		setup_connection(Me, Host, Port, Pass, Nick, Names, Chans),
+		start,
 		disconnect(Me)
 	).
 
+%% setup_connection(-Id, +Host, +Port, +Nick, +Names, +Chans) is semidet.
+%
+%  Run connection setup routine, and unify Id with the thread Id of the connection.
+
+setup_connection(Me, Host, Port, Pass, Nick, Names, Chans) :-
+	thread_self(Me),
+	init_structs(Pass, Nick, Names, Chans),
+	tcp_socket(Socket),
+	tcp_connect(Socket, Host:Port, Stream),
+	set_stream(Stream, timeout(300)),
+	stream_pair(Stream, _Read, Write),
+	assert_irc_write_stream(Me, Write),
+	set_stream(Write, encoding(utf8)),
+	assert_irc_stream(Me, Stream).
+
+%% start is semidet.
+%
+%  Register user and join irc server. Afterwards, start reading input from the server.
+
+start :-
+	register_and_join,
+	read_server_loop.
 
 %% register_and_join is semidet.
 %
@@ -107,28 +118,27 @@ init_structs(P_, N_, Names, Chans_) :-
 %--------------------------------------------------------------------------------%
 
 
-%% read_server_loop(-Reply) is nondet.
+%% read_server_loop is nondet.
 %
 %  Read the server output one line at a time. Each line will be sent directly
 %  to a predicate that is responsible for handling the output that it receives.
 %  The program will terminate successfully if EOF is reached. Reply is a list
 %  of codes that represents one line of a relayed IRC server message.
 
-read_server_loop(Reply) :-
+read_server_loop :-
 	thread_self(Me),
 	get_irc_stream(Me, Stream),
 	repeat,
-		read_server(Reply, Stream),
+		read_server(Stream),
 		!.
 
-
-%% read_server(-Reply, +Stream) is nondet.
+%% read_server(+Stream) is nondet.
 %
 %  Translate server line to codes. If the codes are equivalent to EOF then succeed
 %  and go back to the main loop for termination. If not then then display the
 %  contents of the server message and process the reply.
 
-read_server(Reply, Stream) :-
+read_server(Stream) :-
 	read_line_to_codes(Stream, Reply),
 	(	Reply = end_of_file
 	->	true
@@ -159,48 +169,43 @@ read_server_handle(Reply) :-
 %
 %  @arg Msg A server line parsed into a compound term for IRC message consumption
 
-process_server(Me, Msg) :-
-	(	% Handle pings
-		Msg = msg("PING", [], O),
-		string_codes(Origin, O),
-		send_msg(Me, pong, Origin)
-	;	% Get irc server and assert info
-		Msg = msg(Server, "001", _, _),
-		retractall(get_irc_server(Me,_)),
-		assert_irc_server(Me,Server),
-		assert_known(Me,irc_server),
-		% Request own user info
-		connection(Me,Nick,_,_,_,_,_),
-		send_msg(Me, who, atom_string $ Nick)
-	;	% Get own host and nick info
-		Msg = msg(_Server, "352", Params, _),
-		(	min_msg_len(Me, _)
-		->	true
-		;	connection(Me,N,_,_,_,_,_),
-			atom_string(N, Nick),
-			Params = [_Asker, _Chan, H, Host, _, Nick| _],
-			% Calculate the minimum length for a private message and assert info
-			format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-			assert_min_msg_len(Me, string_length $ Template),
-			catch(
-				thread_create(
-					(	repeat,
-						send_msg(irc, ping, Nick),
-						sleep(180),
-						fail
-					),
-					_Status,
-					[detached(true), alias(checker)]
-				),
-				_Any,
-				true
-			)
+process_server(Me, msg("PING", [], O)) :-
+	% handle pings
+	string_codes(Origin, O),
+	send_msg(Me, pong, Origin).
+process_server(Me, msg(Server, "001", _, _)) :-
+	% get irc server and assert info
+	retractall(get_irc_server(Me, _)),
+	assert_irc_server(Me, Server),
+	% request own user info
+	connection(Me, Nick, _, _, _, _, _),
+	send_msg(Me, who, atom_string $ Nick).
+process_server(Me, msg(_Server, "352", Params, _)) :-
+	% get own host and nick info
+	(	min_msg_len(Me, _)
+	->	true
+	;	connection(Me, N, _, _, _, _, _),
+		atom_string(N, Nick),
+		Params = [_Asker, _Chan, H, Host, _, Nick|_],
+		% calculate the minimum length for a private message and assert info
+		format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
+		assert_min_msg_len(Me, string_length $ Template),
+		catch(
+			thread_create(ping_loop(Nick, 180), _Status, [detached(true), alias(checker)]),
+			_Any,
+			true
 		)
-	;	handle_server(Me, Goals),
-		Goals \= [],
-		maplist(process_msg(Me-Msg), Goals)
 	).
+process_server(Me, Msg) :-
+	% run user's custom goals
+	handle_server(Me, [Goal|Goals]),
+	maplist(process_msg(Me-Msg), [Goal|Goals]).
 
+ping_loop(Nick, Timeout) :-
+	repeat,
+		send_msg(irc, ping, Nick),
+		sleep(Timeout),
+		fail.
 
 %% assert_handlers(+Id, +Handlers) is det.
 %
