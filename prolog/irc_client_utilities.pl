@@ -1,14 +1,15 @@
-:- module(utilities,
-	 [ run_det/1
-	  ,priv_msg/3
-	  ,priv_msg/4
-	  ,priv_msg_rest/4
-	  ,priv_msg_rest/5
-	  ,priv_msg_paragraph/4 ]).
+:- module(irc_client_utilities, [
+	run_det/1,
+	priv_msg/3,
+	priv_msg/4,
+	priv_msg_rest/4,
+	priv_msg_rest/5,
+	priv_msg_paragraph/4
+]).
 
 
 :- use_module(irc_client_info).
-:- use_module(dispatch).
+:- use_module(irc_client_dispatch).
 :- use_module(library(func)).
 :- use_module(library(lambda)).
 :- use_module(library(dcg/basics)).

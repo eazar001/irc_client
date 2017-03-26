@@ -1,4 +1,4 @@
-:- module(operator, [
+:- module(irc_client_operator, [
 	cmd/2,
 	dbg/2
 ]).

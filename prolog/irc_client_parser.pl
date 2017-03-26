@@ -1,4 +1,4 @@
-:- module(parser, [
+:- module(irc_client_parser, [
 	parse_line/2,
 	prefix_id/2,
 	prefix_id/4

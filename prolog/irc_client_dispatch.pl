@@ -1,4 +1,4 @@
-:- module(dispatch, [
+:- module(irc_client_dispatch, [
 	send_msg/2,
 	send_msg/3,
 	send_msg/4
@@ -6,7 +6,7 @@
 
 
 :- use_module(irc_client_info).
-:- use_module(operator).
+:- use_module(irc_client_operator).
 
 /** <module> Message dispatching
 
