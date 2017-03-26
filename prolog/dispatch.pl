@@ -5,7 +5,7 @@
 ]).
 
 
-:- use_module(info).
+:- use_module(irc_client_info).
 :- use_module(operator).
 
 /** <module> Message dispatching

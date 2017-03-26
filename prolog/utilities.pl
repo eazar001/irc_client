@@ -7,7 +7,7 @@
 	  ,priv_msg_paragraph/4 ]).
 
 
-:- use_module(info).
+:- use_module(irc_client_info).
 :- use_module(dispatch).
 :- use_module(library(func)).
 :- use_module(library(lambda)).

@@ -7,26 +7,18 @@
 
 :- use_module(library(socket)).
 :- use_module(library(func)).
-:- use_module(info).
-
-:- reexport(info).
-
-:- use_module(parser).
+:- reexport(irc_client_info).
 
 :- reexport(parser, [
 	prefix_id/2,
 	prefix_id/4
 ]).
 
-:- use_module(dispatch).
-
 :- reexport(dispatch, [
 	send_msg/2,
 	send_msg/3,
 	send_msg/4
 ]).
-
-:- use_module(utilities).
 
 :- reexport(utilities, [
 	priv_msg/3,
@@ -72,15 +64,14 @@ information sets are maintained here.
 connect(Host, Port, Pass, Nick, Names, Chans) :-
 	setup_call_cleanup(
 		(	thread_self(Me),
-			asserta(info:c_specs(Me,Host,Port,Pass,Nick,Names,Chans)),
 			init_structs(Pass, Nick, Names, Chans),
 			tcp_socket(Socket),
 			tcp_connect(Socket, Host:Port, Stream),
 			set_stream(Stream, timeout(300)),
 			stream_pair(Stream, _Read, Write),
-			asserta(info:get_irc_write_stream(Me, Write)),
+			assert_irc_write_stream(Me, Write),
 			set_stream(Write, encoding(utf8)),
-			asserta(info:get_irc_stream(Me, Stream))
+			assert_irc_stream(Me, Stream)
 		),
 		(	register_and_join,
 			read_server_loop(_Reply)
@@ -108,8 +99,7 @@ init_structs(P_, N_, Names, Chans_) :-
 	maplist(atom_string, Chans_, Chans),
 	maplist(atom_string, [N_, P_, Hn_, Sn_, Rn_], Strs),
 	Strs = [N, P, Hn, Sn, Rn],
-	Connection =.. [connection, Me, N, P, Chans, Hn, Sn, Rn],
-	asserta(info:Connection).
+	assert_connection(Me, N, P, Chans, Hn, Sn, Rn).
 
 
 %--------------------------------------------------------------------------------%
@@ -177,8 +167,8 @@ process_server(Me, Msg) :-
 	;	% Get irc server and assert info
 		Msg = msg(Server, "001", _, _),
 		retractall(get_irc_server(Me,_)),
-		asserta(info:get_irc_server(Me,Server)),
-		asserta(info:known(Me,irc_server)),
+		assert_irc_server(Me,Server),
+		assert_known(Me,irc_server),
 		% Request own user info
 		connection(Me,Nick,_,_,_,_,_),
 		send_msg(Me, who, atom_string $ Nick)
@@ -191,7 +181,7 @@ process_server(Me, Msg) :-
 			Params = [_Asker, _Chan, H, Host, _, Nick| _],
 			% Calculate the minimum length for a private message and assert info
 			format(string(Template), ':~s!~s@~s PRIVMSG :\r\n ', [Nick,H,Host]),
-			asserta(info:min_msg_len(Me, string_length $ Template)),
+			assert_min_msg_len(Me, string_length $ Template),
 			catch(
 				thread_create(
 					(	repeat,
@@ -230,7 +220,7 @@ process_server(Me, Msg) :-
 assert_handlers(Id, Handlers) :-
 	must_be(ground, Id),
 	retractall(handle_server(Id,_)),
-	asserta(info:handle_server(Id, Handlers)).
+	assert_handle_server(Id, Handlers).
 
 
 :- meta_predicate process_msg(+, 1).
@@ -268,11 +258,9 @@ info_cleanup(Me) :-
 		retractall,
 		[
 			connection(Me,_,_,_,_,_,_),
-			c_specs(Me,_,_,_,_,_),
 			min_msg_len(Me,_),
 			handle_server(Me,_),
 			get_irc_server(Me,_),
-			get_irc_write_stream(Me,_),
-			known(Me,_)
+			get_irc_write_stream(Me,_)
 		]
 	).
