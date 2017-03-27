@@ -1,6 +1,7 @@
-:- module(operator,
-     [ cmd/2
-      ,dbg/2 ]).
+:- module(irc_client_operator, [
+	cmd/2,
+	dbg/2
+]).
 
 /** <module> operator
 Operator module that determines appropriate messaging templates for specific
@@ -13,11 +14,7 @@ atoms which connote particular irc operations.
 %--------------------------------------------------------------------------------%
 
 
-% Convenience commands for specific message relays.
-
-
-%% cmd(+Type, -Template) is semidet.
-%
+%  Convenience commands for specific message relays.
 %  Attempt to unify with a type and a corresponding string template. The string
 %  template will be fed to dispatch in order to send a message.
 
@@ -160,12 +157,10 @@ cmd(join, 'JOIN ~s\r~n').
 cmd(quit, 'QUIT :disconnect\r\n').
 
 
-%--------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------------------------------%
 % Debugging
-%--------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------------------------------%
 
-%% dbg(+Type, -Template) is semidet.
-%
 %  This is used to debug pings, to ensure the client that pongs are being sent.
 
 % PONG [Origin]

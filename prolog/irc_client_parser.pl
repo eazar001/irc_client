@@ -1,7 +1,8 @@
-:- module(parser,
-     [ parse_line/2
-      ,prefix_id/2
-      ,prefix_id/4 ]).
+:- module(irc_client_parser, [
+	parse_line/2,
+	prefix_id/2,
+	prefix_id/4
+]).
 
 
 /** <module> Parsing messages
@@ -42,19 +43,9 @@ crlf =	%x0D %x0A	; Carriage return/linefeed.
 
 */
 
-
-%% parse_line(+Line, -Msg) is semidet.
-%
-%  After splitting the line from any potential trailing parameters, format
-%  the line in a message compound term for proper reading outside of this
-%  module.
-%
-%  @arg Line A list of codes representing a line of a relayed message
-%  @arg Msg A compound term representation of Line
-
 parse_line(Line, Msg) :-
-  split_from_trailer(Line, Out),
-  once(fmt_line(Out, Msg)).
+	split_from_trailer(Line, Out),
+	once(fmt_line(Out, Msg)).
 
 
 %% prefix_id(+Prefix, -Servername) is semidet.
@@ -66,7 +57,7 @@ parse_line(Line, Msg) :-
 %  @arg Servername The server name obtained from the sender's prefix
 
 prefix_id(Prefix, Servername) :-
-  split_string(Prefix, " ", "", [Servername|_]).
+	split_string(Prefix, " ", "", [Servername|_]).
 
 
 %% prefix_id(+Prefix, -Nick, -User, -Host) is semidet.
@@ -75,15 +66,13 @@ prefix_id(Prefix, Servername) :-
 %  arguments are to take the form of a string type.
 
 prefix_id(Prefix, Nick, User, Host) :-
-  split_string(Prefix, "!", "", [Nick|[Rest]]),
-  split_string(Rest, "@", "", [User|[Host]]).
+	split_string(Prefix, "!", "", [Nick|[Rest]]),
+	split_string(Rest, "@", "", [User|[Host]]).
 
 
-%--------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------------------------------%
 
 
-%% fmt_line(+Line, -Msg) is semidet.
-%
 %  Split a server message into (potentially) 3 parts. The message can be split
 %  into a prefix, command, and some command parameters. However, the prefix
 %  is optional and the parameter list can potentially be empty.
@@ -99,20 +88,18 @@ prefix_id(Prefix, Nick, User, Host) :-
 % 4) msg(command, [parameters...]).
 
 fmt_line([has_prefix, Main, Trailer], msg(Prefix, Cmd, Params, Trailer)) :-
-  split_string(Main, " ", "", [Prefix,Cmd|Params]).
+	split_string(Main, " ", "", [Prefix,Cmd|Params]).
 
 fmt_line([has_prefix, Main], msg(Prefix, Cmd, Params)) :-
-  split_string(Main, " ", "", [Prefix,Cmd|Params]).
+	split_string(Main, " ", "", [Prefix,Cmd|Params]).
 
 fmt_line([Main, Trailer], msg(Cmd, Params, Trailer)) :-
-  split_string(Main, " ", "", [Cmd|Params]).
+	split_string(Main, " ", "", [Cmd|Params]).
 
 fmt_line([Main], msg(Cmd, Params)) :-
-  split_string(Main, " ", "", [Cmd|Params]).
+	split_string(Main, " ", "", [Cmd|Params]).
 
 
-%% split_from_trailer(+Line, -Out) is det.
-%
 %  Split the main portion of the message from the trailer portion of the message
 %  if a trailer does exist. These are the possibilities when operating
 %  under the current IRC protocol:
@@ -123,20 +110,20 @@ fmt_line([Main], msg(Cmd, Params)) :-
 %  4) [Main]
 
 split_from_trailer(Line, Out) :-
-  (  split(First, Line, Trailer)
-  -> (  First = [58|Main]
-     -> Out = [has_prefix, Main, Trailer]
-     ;  Main = First,
-        Out = [Main, Trailer]
-     )
-  ;  (  Line = [58|Main]
-     -> Out = [has_prefix, Main]
-     ;  Main = Line,
-        Out = [Main]
-     )
-  ).
+	(	split(First, Line, Trailer)
+	->	(	First = [58|Main]
+		-> 	Out = [has_prefix, Main, Trailer]
+		;  	Main = First,
+			Out = [Main, Trailer]
+		)
+	;	(	Line = [58|Main]
+		->	Out = [has_prefix, Main]
+		;	Main = Line,
+			Out = [Main]
+		)
+	).
 
 
 split([]) --> ` :`.
 split([M|Main]) -->
-  [M], split(Main).
+	[M], split(Main).
