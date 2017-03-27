@@ -30,7 +30,7 @@ assert_connection(Id, Nick, Password, Channels, Hostname, Servername, Realname) 
 	asserta(connection(Id, Nick, Password, Channels, Hostname, Servername, Realname)).
 
 assert_irc_server(Id, Server) :-
-	asserta(Id, Server).
+	asserta(get_irc_server(Id, Server)).
 
 assert_min_msg_len(Id, Length) :-
 	asserta(min_msg_len(Id, Length)).

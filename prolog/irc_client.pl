@@ -7,19 +7,23 @@
 
 :- use_module(library(socket)).
 :- use_module(library(func)).
+:- use_module(irc_client_info).
 :- reexport(irc_client_info).
 
+:- use_module(irc_client_parser).
 :- reexport(irc_client_parser, [
 	prefix_id/2,
 	prefix_id/4
 ]).
 
+:- use_module(irc_client_dispatch).
 :- reexport(irc_client_dispatch, [
 	send_msg/2,
 	send_msg/3,
 	send_msg/4
 ]).
 
+:- use_module(irc_client_utilities).
 :- reexport(irc_client_utilities, [
 	priv_msg/3,
 	priv_msg/4,
